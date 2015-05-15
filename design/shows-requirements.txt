@@ -1,4 +1,4 @@
-Shows Requirements
+Shows
 
 - Nick Simmons, nick@artsy.net
 - Eloy Durán, eloy@artsy.net
@@ -23,6 +23,6 @@ ROLES
 Visitor: Someone that wants to visit a show.
 Browser: Someone that is browsing through the shows and wating to discover shows.
 
-DEFINITIONS:
+DEFINITIONS
 
 Show: An exhibition at either a gallery or a fair.
