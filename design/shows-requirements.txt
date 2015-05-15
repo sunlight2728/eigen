@@ -1,4 +1,4 @@
-Shows
+Requirements Shows
 
 - Nick Simmons, nick@artsy.net
 - Eloy Durán, eloy@artsy.net
@@ -9,13 +9,13 @@ USER STORIES
 
 Visiting
 
-As a visitor, I would like to see important visitor information first, so that I know if I can attend.
-As a visitor, I would like to get full opening hours information, so that I can see if attending at other times will work.
+As a visitor, I would like to see important visitor information first, so that I know if I can attend. - #1 todo
+As a visitor, I would like to get full opening hours information, so that I can see if attending at other times will work. - #2 todo 3
   Should this still show, e.g. “Friday from 14 - 18” if coming Friday is past the show ending date?
 
 Discovering
 
-As a browser, I would like to see only a few artworks if there are many, so that I can wet my appetite but still easily get to other show information.
+As a browser, I would like to see only a few artworks if there are many, so that I can wet my appetite but still easily get to other show information. - #3 todo
   This section should be collapsed if there 8 or more artworks in the show.
 
 ROLES
