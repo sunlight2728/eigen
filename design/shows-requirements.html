@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<title>Requirements Shows &middot; Artsy</title>
+<link rel="stylesheet" type="text/css" media="all" href="http://resources.fngtps.com/2006/doc.css" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<style type="text/css">
+  td.id { text-align: right !important; }
+  td.id a { color: #000; }
+  table.review { border-bottom: 1px solid #ccc; margin-top: -1em;}
+  table.review td { padding: .25em 0; vertical-align: top; text-align: left; min-width: 1em; }
+  table.review th { padding: .25em 0; vertical-align: top; text-align: right; }
+  table.review td.story { width: 100%; border-top: 1px solid #ccc; }
+  table.review td.meta { padding-left: 1em; border-top: 1px solid #ccc; text-align: right !important; white-space: nowrap; }
+  table.review td.notes { color: #666; padding: 0 0 .25em 0; font-style: italic; }
+  table.review .dropped { color: #666; text-decoration: line-through; }
+  table.review .done { color: #666; background-color: #f0f8ff; }
+  table.review tr.nested td.story { padding-left: 1em; }
+  #logo { width: 100px; height: 100px; background-size: 100px; background-image: url(https://avatars0.githubusercontent.com/u/546231?v=3&s=200); }
+</style>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.2.6/jquery.min.js"></script>
+</head>
+<body id="doc" class="requirements">
+
+<p id="logo"></p>
+
+<h1>Requirements <br />Shows</h1>
+
+<p class="author">Nick Simmons, <a href="mailto:nick@artsy.net">nick@artsy.net</a></p>
+<p class="author">Eloy Durán, <a href="mailto:eloy@artsy.net">eloy@artsy.net</a></p>
+
+<p>The show pages display information and works of shows, which are exhibitions at either galleries or fairs. They are intended to learn about shows, how to visit them, and discover art by themes (?).</p>
+
+<h2>User stories</h2>
+<h3>Visiting</h3>
+<table class="review">
+<tr>
+  <th></th>
+  <th title="id">#</th>
+  <th title="Estimate">e</th>
+  <th title="Iteration">i</th>
+  <th title="Status">s</th>
+</tr>
+<tr class="" id="story">
+  <td class="story">As a visitor, I would like to see important visitor information first, so that I know if I can attend.</td>
+  <td class="meta id"></td>
+  <td class="meta estimate"></td>
+  <td class="meta iteration"></td>
+  <td class="meta status"></td>
+</tr>
+<tr class="" id="story">
+  <td class="story">As a visitor, I would like to get full opening hours information, so that I can see if attending at other times will work.</td>
+  <td class="meta id"></td>
+  <td class="meta estimate"></td>
+  <td class="meta iteration"></td>
+  <td class="meta status"></td>
+</tr>
+<tr class="">
+  <td class="notes" colspan="5">Should this still show, e.g. “Friday from 14 - 18” if coming Friday is past the show ending date?</td>
+</tr>
+</table>
+<h3>Discovering</h3>
+<table class="review">
+<tr>
+  <th></th>
+  <th title="id">#</th>
+  <th title="Estimate">e</th>
+  <th title="Iteration">i</th>
+  <th title="Status">s</th>
+</tr>
+<tr class="" id="story">
+  <td class="story">As a browser, I would like to see only a few artworks if there are many, so that I can wet my appetite but still easily get to other show information.</td>
+  <td class="meta id"></td>
+  <td class="meta estimate"></td>
+  <td class="meta iteration"></td>
+  <td class="meta status"></td>
+</tr>
+<tr class="">
+  <td class="notes" colspan="5">This section should be collapsed if there 8 or more artworks in the show.</td>
+</tr>
+</table>
+
+<h2>Roles</h2>
+<dl>
+<dt>Visitor</dt>
+<dd>Someone that wants to visit a show.</dd>
+<dt>Browser</dt>
+<dd>Someone that is browsing through the shows and wating to discover shows.</dd>
+</dl>
+<h2>Definitions</h2>
+<dl>
+<dt>Show</dt>
+<dd>An exhibition at either a gallery or a fair.</dd>
+</dl>
+</body>
+</html>
