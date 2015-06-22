@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Artsy</string>
+	<string>Artsy β</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -34,7 +34,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.0.0</string>
+	<string>2.0.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -64,17 +64,17 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>2015.06.05</string>
+	<string>2015.06.22</string>
 	<key>FacebookAppID</key>
 	<string>308278682573501</string>
 	<key>FacebookDisplayName</key>
 	<string>Artsy</string>
 	<key>GITCommitRev</key>
-	<string>a07735b</string>
+	<string>7245098</string>
 	<key>GITCommitSha</key>
-	<string>a07735b66d65a0c2241f5dab8be1f0d541d226df</string>
+	<string>72450983cc85c9392d27e96a6c1721340d6b77a8</string>
 	<key>GITRemoteOriginURL</key>
-	<string></string>
+	<string>git@github.com:orta/eigen.git</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIAppFonts</key>
