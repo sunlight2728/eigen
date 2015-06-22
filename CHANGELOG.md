@@ -1,6 +1,7 @@
 ## 2.0.1
 
 * Fair Artists links in Martsy outside of a fair will resolve correctly to their fair - orta
+* Ensure consistent access to the keychain throughout the ARUserManager - orta
 
 ## 2.0.0 (05/06/2015)
 
