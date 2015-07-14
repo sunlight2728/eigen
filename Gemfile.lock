@@ -37,6 +37,11 @@ GIT
       colorize (~> 0.7)
       xcodeproj (~> 0.25.0)
 
+PATH
+  remote: /Users/orta/spiel/ruby/cocoapods-acknowledgements
+  specs:
+    cocoapods-acknowledgements (0.1.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -278,6 +283,7 @@ PLATFORMS
 
 DEPENDENCIES
   cocoapods!
+  cocoapods-acknowledgements!
   cocoapods-deintegrate
   cocoapods-keys
   cocoapods-stats

@@ -4,6 +4,8 @@ gem 'cocoapods', :git => 'https://github.com/cocoapods/cocoapods.git', :branch =
 gem 'cocoapods-keys'
 gem 'cocoapods-stats'
 gem 'cocoapods-deintegrate'
+gem 'cocoapods-acknowledgements', :path => "/Users/orta/spiel/ruby/cocoapods-acknowledgements"
+
 
 group :development do
   gem 'houston'

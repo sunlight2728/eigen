@@ -10,6 +10,7 @@
 		062C202116DD76C90095A7EC /* ARZoomView.m in Sources */ = {isa = PBXBuildFile; fileRef = 062C202016DD76C90095A7EC /* ARZoomView.m */; };
 		0631FA6F1705E77F000A5ED3 /* mail.html in Resources */ = {isa = PBXBuildFile; fileRef = 0631FA6E1705E77F000A5ED3 /* mail.html */; };
 		064330E5170F526300FF6C41 /* ARArtistViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 064330E4170F526200FF6C41 /* ARArtistViewController.m */; };
+		1F69516558CA4572824B3E60 /* Pods-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 501EC1AD9379DA5983C9959C /* Pods-metadata.plist */; };
 		342F902302C1CF0FD342AB93 /* NSDate+Util.m in Sources */ = {isa = PBXBuildFile; fileRef = 342F97C153D8524B132D0927 /* NSDate+Util.m */; };
 		342F9061CC93426E7F8579A2 /* ARFeedImageLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = 342F966C989CF0BE97711FB6 /* ARFeedImageLoader.m */; };
 		342F906FD605E75158D32876 /* ARSharingController.m in Sources */ = {isa = PBXBuildFile; fileRef = 342F9DC4018D17E7378DA607 /* ARSharingController.m */; };
@@ -208,6 +209,7 @@
 		49EF164716C568EA00460BD7 /* Profile.m in Sources */ = {isa = PBXBuildFile; fileRef = 49EF164616C568EA00460BD7 /* Profile.m */; };
 		49F0C67B17B9706000721244 /* AROnboardingViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 49F0C67A17B9706000721244 /* AROnboardingViewController.m */; };
 		49F45188176A71B50041A4B4 /* ARArtworkSetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4917819E176A6B22001E751E /* ARArtworkSetViewController.m */; };
+		50071D01883B1F8ADB166CD7 /* Pods-Artsy-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7186DA83D4B7CC8110CC0B7C /* Pods-Artsy-metadata.plist */; };
 		5122D69A1A89E5F800DA2704 /* ARFairMapAnnotationViewTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 5122D6991A89E5F800DA2704 /* ARFairMapAnnotationViewTests.m */; };
 		513483551AADD0A10062E624 /* PSPDFKitImproveRecursiveDescription.m in Sources */ = {isa = PBXBuildFile; fileRef = 513483541AADD0A10062E624 /* PSPDFKitImproveRecursiveDescription.m */; };
 		5144331B1AD68D8400FBBCE5 /* ARTopMenuInternalMobileWebViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 5144331A1AD68D8400FBBCE5 /* ARTopMenuInternalMobileWebViewController.m */; };
@@ -463,6 +465,7 @@
 		60F8FFC1197E773E00DC3869 /* ARArtworkSetViewControllerSpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 60F8FFC0197E773E00DC3869 /* ARArtworkSetViewControllerSpec.m */; };
 		60FAEF43179843080031C88B /* ARFavoritesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 60FAEF42179843080031C88B /* ARFavoritesViewController.m */; };
 		83F9D5801AD6FDE0000BCC77 /* Location.m in Sources */ = {isa = PBXBuildFile; fileRef = 83F9D57F1AD6FDE0000BCC77 /* Location.m */; };
+		963A4FD20B1512FF13F9657F /* Pods-Artsy Tests-metadata.plist in Resources */ = {isa = PBXBuildFile; fileRef = F53286F0E26961EB4A1D1A6D /* Pods-Artsy Tests-metadata.plist */; };
 		B30FEF5A181EEA47009E4EAD /* ARBidButtonTests.m in Sources */ = {isa = PBXBuildFile; fileRef = B30FEF59181EEA47009E4EAD /* ARBidButtonTests.m */; };
 		B316E2F418170DF40086CCDB /* SaleArtwork.m in Sources */ = {isa = PBXBuildFile; fileRef = B316E2F318170DF40086CCDB /* SaleArtwork.m */; };
 		B316E2F7181713110086CCDB /* Bidder.m in Sources */ = {isa = PBXBuildFile; fileRef = B316E2F6181713110086CCDB /* Bidder.m */; };
@@ -960,6 +963,7 @@
 		49F0C67A17B9706000721244 /* AROnboardingViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AROnboardingViewController.m; sourceTree = "<group>"; };
 		49F0C67D17B972F200721244 /* ARSlideshowView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARSlideshowView.h; sourceTree = "<group>"; };
 		49F0C67E17B972F200721244 /* ARSlideshowView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ARSlideshowView.m; sourceTree = "<group>"; };
+		501EC1AD9379DA5983C9959C /* Pods-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "Pods-metadata.plist"; path = "Pods/Pods-metadata.plist"; sourceTree = "<group>"; };
 		5122D6991A89E5F800DA2704 /* ARFairMapAnnotationViewTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ARFairMapAnnotationViewTests.m; sourceTree = "<group>"; };
 		513483541AADD0A10062E624 /* PSPDFKitImproveRecursiveDescription.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PSPDFKitImproveRecursiveDescription.m; sourceTree = "<group>"; };
 		514433191AD68D8400FBBCE5 /* ARTopMenuInternalMobileWebViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARTopMenuInternalMobileWebViewController.h; sourceTree = "<group>"; };
@@ -1416,6 +1420,7 @@
 		60FFE3DC188E91F20012B485 /* getting_confident.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = getting_confident.md; sourceTree = "<group>"; };
 		60FFE3DD188E921A0012B485 /* eigen_tips.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = eigen_tips.md; sourceTree = "<group>"; };
 		631273B5F76AA177A0D6C949 /* Pods_Artsy.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Artsy.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7186DA83D4B7CC8110CC0B7C /* Pods-Artsy-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "Pods-Artsy-metadata.plist"; path = "Pods/Pods-Artsy-metadata.plist"; sourceTree = "<group>"; };
 		83F9D57E1AD6FDE0000BCC77 /* Location.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Location.h; sourceTree = "<group>"; };
 		83F9D57F1AD6FDE0000BCC77 /* Location.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Location.m; sourceTree = "<group>"; };
 		8CE6A4297267F0288822CB76 /* Pods_Artsy_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Artsy_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1607,6 +1612,7 @@
 		E6FFEAAB19C7925600A0D7DE /* splash_4@2x~ipad.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "splash_4@2x~ipad.jpg"; sourceTree = "<group>"; };
 		E6FFEAAC19C7925600A0D7DE /* splash_4@2x~iphone.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "splash_4@2x~iphone.jpg"; sourceTree = "<group>"; };
 		E6FFEAAD19C7925600A0D7DE /* splash_5@2x~ipad.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "splash_5@2x~ipad.jpg"; sourceTree = "<group>"; };
+		F53286F0E26961EB4A1D1A6D /* Pods-Artsy Tests-metadata.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "Pods-Artsy Tests-metadata.plist"; path = "Pods/Pods-Artsy Tests-metadata.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2315,6 +2321,9 @@
 				9BEDEECE6D89A7273A600C4B /* Pods-Artsy Tests.beta.xcconfig */,
 				D1B307A5238B6E45DC517910 /* Pods-Artsy Tests.store.xcconfig */,
 				CDEDFCEA46DCA90DBC0EA7D8 /* Pods-Artsy Tests.demo.xcconfig */,
+				501EC1AD9379DA5983C9959C /* Pods-metadata.plist */,
+				7186DA83D4B7CC8110CC0B7C /* Pods-Artsy-metadata.plist */,
+				F53286F0E26961EB4A1D1A6D /* Pods-Artsy Tests-metadata.plist */,
 			);
 			name = Pods;
 			sourceTree = "<group>";
@@ -4187,6 +4196,8 @@
 				E6FFEAAF19C7925600A0D7DE /* onboard_1@2x~ipad.jpg in Resources */,
 				5152C65B1B5039170018D4E4 /* SearchButton@2x.png in Resources */,
 				E65BB5231A408A29004C4DB4 /* TextfieldClearButton.png in Resources */,
+				1F69516558CA4572824B3E60 /* Pods-metadata.plist in Resources */,
+				50071D01883B1F8ADB166CD7 /* Pods-Artsy-metadata.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4235,6 +4246,7 @@
 				E6B9FA7B18A97C0A00E961F9 /* stub.jpg in Resources */,
 				5EB33E78197EBFEB00706EB1 /* square.png in Resources */,
 				E6F466E818EF52A800A09AFA /* Artwork_v1.data in Resources */,
+				963A4FD20B1512FF13F9657F /* Pods-Artsy Tests-metadata.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

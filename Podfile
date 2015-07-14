@@ -37,6 +37,12 @@ plugin 'cocoapods-keys', {
     ]
 }
 
+plugin 'cocoapods-acknowledgements', :settings_bundle => true , :settings_post_process => Proc.new { |settings_plist_path|
+  puts "ACK" 
+  puts settings_plist_path
+}
+
+
 target 'Artsy' do
 
   # Networking
