@@ -1,5 +1,6 @@
 
 
+
 @interface Profile () {
     BOOL _followed;
 }
@@ -57,11 +58,11 @@
 
 - (void)updateProfile:(void (^)(void))success
 {
-    @weakify(self);
+    @_weakify(self);
 
     if (self.profileID) {
         [ArtsyAPI getProfileForProfileID:self.profileID success:^(Profile *profile) {
-            @strongify(self);
+            @_strongify(self);
 
             [self mergeValuesForKeysFromModel:profile];
             success();

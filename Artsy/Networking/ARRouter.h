@@ -1,5 +1,6 @@
 
 
+
 @interface ARRouter : NSObject
 
 + (void)setup;
@@ -7,7 +8,7 @@
 + (NSURL *)baseApiURL;
 + (NSURL *)baseWebURL;
 
-+ (AFHTTPClient *)httpClient;
++ (AFHTTPSessionManager *)httpClient;
 + (void)setupWithBaseApiURL:(NSURL *)baseApiURL;
 
 + (void)setupUserAgent;
@@ -164,6 +165,7 @@
 
 + (NSURLRequest *)suggestedHomepageArtworksRequest;
 + (NSURLRequest *)worksForYouRequest;
++ (NSURLRequest *)worksForYouCountRequest;
 
 #pragma mark - Misc Site
 

@@ -24,7 +24,7 @@ static CGFloat ARFeedLinksNavMarginPhone = 20;
 static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
 
 
-@interface ARShowFeedViewController () <ARMenuAwareViewController, DRKonamiGestureProtocol>
+@interface ARShowFeedViewController () <ARMenuAwareViewController, DRKonamiGestureProtocol, AROfflineViewDelegate, ARNetworkErrorAwareViewController>
 
 @property (nonatomic, strong) ARHeroUnitViewController *heroUnitVC;
 @property (nonatomic, strong) ARFeedLinkUnitViewController *feedLinkVC;
@@ -51,16 +51,18 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
 
     _heroUnitVC = [[ARHeroUnitViewController alloc] init];
 
-    @weakify(self);
+    @_weakify(self);
     NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
     self.networkNotificationObserver = [defaultCenter addObserverForName:ARNetworkUnavailableNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
-        @strongify(self);
+        @_strongify(self);
         if (self.feedTimeline.numberOfItems == 0) {
             // The offline view will be hidden when we load content.
             [self showOfflineView];
         }
     }];
+
     self.automaticallyAdjustsScrollViewInsets = NO;
+
     return self;
 }
 
@@ -88,7 +90,7 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
     [self didChangeValueForKey:@keypath(self, hidesToolbarMenu)];
 }
 
-#pragma mark - Private Methods
+#pragma mark - Offline View
 
 - (void)showOfflineView
 {
@@ -96,6 +98,7 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
 
     if (self.offlineView == nil) {
         self.offlineView = [[AROfflineView alloc] initWithFrame:self.view.bounds];
+        self.offlineView.delegate = self;
     }
 
     [self.view addSubview:self.offlineView];
@@ -114,6 +117,18 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
     self.offlineView = nil;
 }
 
+- (void)offlineViewDidRequestRefresh:(AROfflineView *)offlineView;
+{
+    [self refreshFeed];
+}
+
+#pragma mark - ARNetworkErrorAwareViewController
+
+- (BOOL)shouldShowActiveNetworkError;
+{
+    return !self.isSHowingOfflineView;
+}
+
 #pragma mark - ARMenuAwareViewController
 
 - (BOOL)hidesBackButton
@@ -123,29 +138,49 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
 
 - (BOOL)hidesToolbarMenu
 {
-    return self.showingOfflineView == YES;
+    return self.showingOfflineView;
 }
+
+- (BOOL)hidesSearchButton;
+{
+    return self.showingOfflineView;
+}
+
+#pragma mark - Implementation
+
 - (void)refreshFeedItems
 {
     [ARAnalytics startTimingEvent:ARAnalyticsInitialFeedLoadTime];
-    [self presentLoadingView];
+    if (!self.showingOfflineView) {
+        [self presentLoadingView];
+    }
 
-    @weakify(self)
-        [ArtsyAPI getXappTokenWithCompletion:^(NSString *xappToken, NSDate *expirationDate) {
+    @_weakify(self);
+
+    [ArtsyAPI getXappTokenWithCompletion:^(NSString *xappToken, NSDate *expirationDate) {
         [self.feedTimeline getNewItems:^{
-            @strongify(self);
+            @_strongify(self);
             [self.tableView reloadData];
             [self hideLoadingView];
             [self hideOfflineView];
+            [self loadHeroUnits];
             [self loadNextFeedPage];
             [ARAnalytics finishTimingEvent:ARAnalyticsInitialFeedLoadTime];
 
         } failure:^(NSError *error) {
             ARErrorLog(@"There was an error getting newest items for the feed: %@", error.localizedDescription);
+            [self.offlineView refreshFailed];
             [self performSelector:@selector(refreshFeed) withObject:nil afterDelay:3];
             [ARAnalytics finishTimingEvent:ARAnalyticsInitialFeedLoadTime];
         }];
-        }];
+    } failure:^(NSError *error) {
+        [self.offlineView refreshFailed];
+    }];
+}
+
+- (void)loadHeroUnits
+{
+    [self.heroUnitDatasource getHeroUnitsWithSuccess:nil failure:nil];
 }
 
 - (void)setHeroUnitDatasource:(ARHeroUnitsNetworkModel *)heroUnitDatasource
@@ -193,24 +228,20 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
         self.headerView.backgroundColor = [UIColor whiteColor];
 
         [self.headerView addSubview:featuredShowsLabel];
-        [featuredShowsLabel alignTop:@(ARShowFeedHeaderLabelMarginPad).stringValue
-                             leading:@(sideMargin).stringValue
-                              bottom:nil
-                            trailing:@(-sideMargin).stringValue
-                              toView:self.headerView];
         [featuredShowsLabel alignLeading:@(sideMargin).stringValue trailing:@(-sideMargin).stringValue toView:self.headerView];
+        [featuredShowsLabel alignTopEdgeWithView:self.headerView predicate:@(ARShowFeedHeaderLabelMarginPad).stringValue];
         [featuredShowsLabel alignBottomEdgeWithView:self.headerView predicate:@"0"];
 
         [self.headerView addSubview:showsTitleSeparator];
-        [showsTitleSeparator alignBottomEdgeWithView:featuredShowsLabel predicate:nil];
+        [showsTitleSeparator alignBottomEdgeWithView:featuredShowsLabel predicate:@"0"];
         [showsTitleSeparator alignLeading:@(sideMargin).stringValue trailing:@(-sideMargin).stringValue toView:self.headerView];
 
     } else {
         self.feedLinkVC = [[ARFeedLinkUnitViewController alloc] init];
-        @weakify(self);
+        @_weakify(self);
         [ArtsyAPI getXappTokenWithCompletion:^(NSString *xappToken, NSDate *expirationDate) {
             [self.feedLinkVC fetchLinks:^{
-                @strongify(self);
+                @_strongify(self);
                 if (![UIDevice isPad]) { [self layoutFeedLinks]; }
             }];
         }];
@@ -222,7 +253,8 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
         self.headerView.backgroundColor = [UIColor whiteColor];
 
         [self ar_addModernChildViewController:self.feedLinkVC intoView:self.headerView];
-        [self.feedLinkVC.view alignTop:@(ARFeedLinksNavMarginPhone).stringValue leading:@(sideMargin).stringValue bottom:nil trailing:@(-sideMargin).stringValue toView:self.headerView];
+        [self.feedLinkVC.view alignLeading:@(sideMargin).stringValue trailing:@(-sideMargin).stringValue toView:self.headerView];
+        [self.feedLinkVC.view alignTopEdgeWithView:self.headerView predicate:@(ARFeedLinksNavMarginPhone).stringValue];
 
         [self.headerView addSubview:featuredShowsLabel];
         [featuredShowsLabel constrainTopSpaceToView:self.feedLinkVC.view predicate:@"0"];
@@ -261,7 +293,7 @@ static CGFloat ARFeaturedShowsTitleHeightPhone = 40;
 
     [self ar_addModernChildViewController:self.heroUnitVC intoView:self.view belowSubview:self.tableView];
     [self.heroUnitVC.view alignLeading:@"0" trailing:@"0" toView:self.view];
-    [self.heroUnitVC.view constrainTopSpaceToView:(UIView *)self.topLayoutGuide predicate:@"0"];
+    [self.heroUnitVC.view constrainTopSpaceToView:self.flk_topLayoutGuide predicate:@"0"];
     UIEdgeInsets insets = self.tableView.contentInset;
     insets.top = 20 + self.heroUnitVC.preferredContentSize.height;
     self.tableView.contentInset = insets;

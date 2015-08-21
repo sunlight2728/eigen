@@ -4,8 +4,6 @@
 
 @interface ARInquireForArtworkViewController (Testing)
 
-@property (nonatomic, assign, readwrite) BOOL shouldAnimate;
-
 @property (nonatomic, strong, readonly) UITextField *emailInput;
 @property (nonatomic, strong, readonly) UITextField *nameInput;
 
@@ -74,21 +72,18 @@ describe(@"logged in", ^{
 
     itHasAsyncronousSnapshotsForDevicesWithName(@"displays Contact Gallery when seller is a gallery", ^{
         ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithPartnerInquiryForArtwork:galleryArtwork fair:nil];
-        vc.shouldAnimate = NO;
         [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
         return vc;
     });
 
     itHasAsyncronousSnapshotsForDevicesWithName(@"displays Contact Seller when seller is not a gallery", ^{
         ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithPartnerInquiryForArtwork:museumGallery fair:nil];
-        vc.shouldAnimate = NO;
         [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
         return vc;
     });
 
     itHasAsyncronousSnapshotsForDevicesWithName(@"logged out, displays artsy specialist", ^{
         ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-        vc.shouldAnimate = NO;
         [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
         return vc;
     });
@@ -109,14 +104,12 @@ describe(@"logged out", ^{
 
         itHasAsyncronousSnapshotsForDevicesWithName(@"displays contact gallery", ^{
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithPartnerInquiryForArtwork:galleryArtwork fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             return vc;
         });
 
         itHasAsyncronousSnapshotsForDevicesWithName(@"displays artsy specialist", ^{
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             return vc;
         });
@@ -124,7 +117,6 @@ describe(@"logged out", ^{
         itHasAsyncronousSnapshotsForDevicesWithName(@"works for an artwork without a title", ^{
             museumGallery.title = nil;
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithPartnerInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             return vc;
         });
@@ -148,7 +140,6 @@ describe(@"logged out", ^{
             [ARUserManager sharedManager].trialUserEmail = @"invalidEmail";
             
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             return vc;
         });
@@ -157,7 +148,6 @@ describe(@"logged out", ^{
             [ARUserManager sharedManager].trialUserEmail = @"validemail@gmail.com";
 
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             return vc;
         });
@@ -166,7 +156,6 @@ describe(@"logged out", ^{
             [ARUserManager sharedManager].trialUserEmail = nil;
             
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             return vc;
         });
@@ -175,7 +164,6 @@ describe(@"logged out", ^{
             [ARUserManager sharedManager].trialUserEmail = nil;
             
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             
             vc.emailInput.text = @"validemail@gmail.com";
@@ -187,7 +175,6 @@ describe(@"logged out", ^{
             [ARUserManager sharedManager].trialUserEmail = nil;
             
             ARInquireForArtworkViewController *vc = [[ARInquireForArtworkViewController alloc] initWithAdminInquiryForArtwork:museumGallery fair:nil];
-            vc.shouldAnimate = NO;
             [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
             
             vc.emailInput.text = @"validemail@gmail.com";
@@ -211,7 +198,6 @@ describe(@"sending", ^{
         [[[[userMock stub] classMethod] andReturnValue:OCMOCK_VALUE(YES)] isTrialUser];
 
         vc = [[ARInquireForArtworkViewController alloc] initWithPartnerInquiryForArtwork:galleryArtwork fair:nil];
-        vc.shouldAnimate = NO;
         [vc ar_presentWithFrame:[[UIScreen mainScreen] bounds]];
     });
     
@@ -223,22 +209,28 @@ describe(@"sending", ^{
 
     it(@"displays sending message", ^{
         [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/me/artwork_inquiry_request" withResponse:@{}];
+        id partialVC = [OCMockObject partialMockForObject:vc];
+        [[partialVC stub] sendInquiry];
         [vc sendButtonTapped:vc.sendButton];
+
         expect(vc.messageTitleLabel.hidden).to.beFalsy();
         expect(vc.messageTitleLabel.text).to.equal(@"SENDING…");
         expect(vc.messageBodyLabel.hidden).to.beFalsy();
         expect(vc.messageBodyLabel.text).to.equal(@"");
         expect(vc.failureTryAgainButton.hidden).to.beTruthy();
         expect(vc.failureDismissButton.hidden).to.beTruthy();
+
+        [partialVC stopMocking];
     });
+
 
     it(@"displays success message", ^{
         [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/me/artwork_inquiry_request" withResponse:@{}];
         [vc sendButtonTapped:vc.sendButton];
         expect(vc.messageTitleLabel.hidden).to.beFalsy();
-        expect(vc.messageTitleLabel.text).will.equal(@"THANK YOU");
+        expect(vc.messageTitleLabel.text).to.equal(@"THANK YOU");
         expect(vc.messageBodyLabel.hidden).to.beFalsy();
-        expect(vc.messageBodyLabel.text).will.equal(@"Your message has been sent");
+        expect(vc.messageBodyLabel.text).to.equal(@"Your message has been sent");
         expect(vc.failureTryAgainButton.hidden).to.beTruthy();
         expect(vc.failureDismissButton.hidden).to.beTruthy();
     });
@@ -246,14 +238,15 @@ describe(@"sending", ^{
     describe(@"general failure", ^{
         before(^{
             [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/me/artwork_inquiry_request" withResponse:@{} andStatusCode:400];
+            [vc ar_presentWithFrame:CGRectMake(0, 0, 360, 720)];
             [vc sendButtonTapped:vc.sendButton];
         });
 
         it(@"displays failure message", ^{
             expect(vc.messageTitleLabel.hidden).to.beFalsy();
-            expect(vc.messageTitleLabel.text).will.equal(@"ERROR SENDING MESSAGE");
+            expect(vc.messageTitleLabel.text).to.equal(@"ERROR SENDING MESSAGE");
             expect(vc.messageBodyLabel.hidden).to.beFalsy();
-            expect(vc.messageBodyLabel.text).will.equal(@"Please try again or email\nsupport@artsy.net if the issue persists");
+            expect(vc.messageBodyLabel.text).to.equal(@"Please try again or email\nsupport@artsy.net if the issue persists");
             expect(vc.failureTryAgainButton.hidden).to.beFalsy();
             expect(vc.failureDismissButton.hidden).to.beFalsy();
         });

@@ -14,7 +14,7 @@
 #import "ORStackView+ArtsyViews.h"
 #import "ARFairMapPreviewButton.h"
 
-NS_ENUM(NSInteger, ARFairShowViewIndex){
+typedef NS_ENUM(NSInteger, ARFairShowViewIndex) {
     ARFairShowViewHeader = 1,
     ARFairShowViewActionButtons,
     ARFairShowViewPartnerLabel,
@@ -26,8 +26,9 @@ NS_ENUM(NSInteger, ARFairShowViewIndex){
     ARFairShowViewDescription,
     ARFairShowViewMapPreview,
     ARFairShowViewFollowPartner,
-    ARFairShowViewWhitespaceAboveArtworks,
-    ARFairShowViewArtworks};
+    ARFairShowViewArtworks,
+    ARFairShowViewWhitespaceGobbler,
+};
 
 static const NSInteger ARFairShowMaximumNumberOfHeadlineImages = 5;
 
@@ -39,7 +40,6 @@ static const NSInteger ARFairShowMaximumNumberOfHeadlineImages = 5;
 @property (nonatomic, strong, readonly) AREmbeddedModelsViewController *showArtworksViewController;
 @property (nonatomic, strong, readonly) ARActionButtonsView *actionButtonsView;
 @property (nonatomic, strong, readwrite) Fair *fair;
-@property (nonatomic, assign, readwrite) BOOL shouldAnimate;
 
 @property (nonatomic, strong) NSLayoutConstraint *followButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *headerImageHeightConstraint;
@@ -68,16 +68,6 @@ static const NSInteger ARFairShowMaximumNumberOfHeadlineImages = 5;
     } else {
         return size.width > size.height ? 511 : 413;
     }
-}
-
-- (instancetype)init
-{
-    self = [super init];
-    if (!self) {
-        return nil;
-    }
-    _shouldAnimate = YES;
-    return self;
 }
 
 - (instancetype)initWithShowID:(NSString *)showID fair:(Fair *)fair
@@ -122,7 +112,7 @@ static const NSInteger ARFairShowMaximumNumberOfHeadlineImages = 5;
     [self addMapPreview];
     [self addFairArtworksToStack];
 
-    [self ar_removeIndeterminateLoadingIndicatorAnimated:self.shouldAnimate];
+    [self ar_removeIndeterminateLoadingIndicatorAnimated:ARPerformWorkAsynchronously];
 
     // Create a "be full screen with a low priority" constraint
     CGFloat height = CGRectGetHeight(self.parentViewController.parentViewController.view.bounds);
@@ -130,14 +120,17 @@ static const NSInteger ARFairShowMaximumNumberOfHeadlineImages = 5;
     [self.view.stackView constrainHeight:heightConstraint];
 
     CGFloat parentHeight = CGRectGetHeight(self.parentViewController.view.bounds) ?: CGRectGetHeight([UIScreen mainScreen].bounds);
-    [self.view.stackView ensureScrollingWithHeight:parentHeight];
+    [self.view.stackView ensureScrollingWithHeight:parentHeight tag:ARFairShowViewWhitespaceGobbler];
 }
 
 - (void)addActionButtonsToStack
 {
     _actionButtonsView = [[ARActionButtonsView alloc] init];
     self.actionButtonsView.tag = ARFairShowViewActionButtons;
+
+    // Make sure that the action view is at least 70px below the top of the stack view in case there are no install shots.
     [self.view.stackView addSubview:self.actionButtonsView withTopMargin:@"20" sideMargin:[self sideMarginPredicate]];
+    [self.actionButtonsView alignTopEdgeWithView:self.view.self predicate:@">=70"];
 
     NSMutableArray *descriptions = [NSMutableArray array];
 
@@ -148,8 +141,7 @@ static const NSInteger ARFairShowMaximumNumberOfHeadlineImages = 5;
             if (self.imagePageViewController.images.count) {
         imageURL = [(Image *)self.imagePageViewController.images[0] urlForThumbnailImage];
             }
-            ARSharingController *sharingController = [ARSharingController sharingControllerWithObject:self.show
-                                                                                    thumbnailImageURL:imageURL];
+            ARSharingController *sharingController = [ARSharingController sharingControllerWithObject:self.show thumbnailImageURL:imageURL];
             [sharingController presentActivityViewControllerFromView:sender];
 }
 }];
@@ -159,24 +151,23 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 
 - (NSDictionary *)descriptionForMapButton
 {
-    @weakify(self);
+    @_weakify(self);
     return @{
         ARActionButtonImageKey : @"MapButtonAction",
         ARActionButtonHandlerKey : ^(ARCircularActionButton *sender){
-            @strongify(self);
-    [self handleMapButtonPress:sender];
-}
-}
-;
+            @_strongify(self);
+            [self handleMapButtonPress:sender];
+        }
+    };
 }
 
 - (void)handleMapButtonPress:(ARCircularActionButton *)sender
 {
-    @weakify(self);
+    @_weakify(self);
     [self.showNetworkModel getFairMaps:^(NSArray *maps) {
-        @strongify(self);
+        @_strongify(self);
         ARFairMapViewController *viewController = [[ARSwitchBoard sharedInstance] loadMapInFair:self.fair title:self.show.title selectedPartnerShows:@[self.show]];
-        [self.navigationController pushViewController:viewController animated:self.shouldAnimate];
+        [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
     }];
 }
 
@@ -200,10 +191,10 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
         [containerView constrainHeight:@"40"];
         [partnerLabel alignTop:@"0" bottom:@"0" toView:containerView];
         if (followButton) {
-            [partnerLabel alignLeading:@"0" trailing:nil toView:containerView];
-            [followButton alignLeading:nil trailing:@"0" toView:containerView];
+            [partnerLabel alignLeadingEdgeWithView:containerView predicate:@"0"];
+            [followButton alignTrailingEdgeWithView:containerView predicate:@"0"];
             [followButton alignTop:@"0" bottom:@"0" toView:containerView];
-            [UIView alignAttribute:NSLayoutAttributeRight ofViews:@[ partnerLabel ] toAttribute:NSLayoutAttributeLeft ofViews:@[ followButton ] predicate:nil];
+            [UIView alignAttribute:NSLayoutAttributeRight ofViews:@[ partnerLabel ] toAttribute:NSLayoutAttributeLeft ofViews:@[ followButton ] predicate:@"0"];
             CGFloat followButtonWidth = [[self class] followButtonWidthForSize:self.view.frame.size];
             self.followButtonWidthConstraint = [[followButton constrainWidth:@(followButtonWidth).stringValue] firstObject];
         } else {
@@ -218,11 +209,11 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 {
     [super viewDidLoad];
 
-    [self ar_presentIndeterminateLoadingIndicatorAnimated:self.shouldAnimate];
+    [self ar_presentIndeterminateLoadingIndicatorAnimated:ARPerformWorkAsynchronously];
 
-    @weakify(self);
+    @_weakify(self);
     [self.showNetworkModel getShowInfo:^(PartnerShow *show) {
-        @strongify(self);
+        @_strongify(self);
         if (!self) { return; }
 
         [self.show mergeValuesForKeysFromModel:show];
@@ -233,7 +224,7 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 
         [self showDidLoad];
     } failure:^(NSError *error) {
-        @strongify(self);
+        @_strongify(self);
 
         [self showDidLoad];
     }];
@@ -253,8 +244,8 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 
 - (UILabel *)partnerLabel
 {
-    ARItalicsSerifLabelWithChevron *partnerLabel = [[ARItalicsSerifLabelWithChevron alloc] init];
-    partnerLabel.font = [UIFont sansSerifFontWithSize:16];
+    ARSansSerifLabelWithChevron *partnerLabel = [[ARSansSerifLabelWithChevron alloc] init];
+    partnerLabel.font = [partnerLabel.font fontWithSize:16];
     partnerLabel.tag = ARFairShowViewPartnerLabel;
     BOOL showChevron = (self.show.partner.profileID && self.show.partner.defaultProfilePublic);
 
@@ -345,19 +336,12 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 - (void)openShowFair:(id)sender
 {
     UIViewController *viewController = [ARSwitchBoard.sharedInstance routeProfileWithID:self.show.fair.organizer.profileID];
-    [self.navigationController pushViewController:viewController animated:self.shouldAnimate];
+    [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
 }
 
 - (void)addFairArtworksToStack
 {
-    // We use a view that takes up the required whitespace to hit the full height
-
     // TODO: this should only load more artworks on scroll (like favorites)
-
-    __block ARWhitespaceGobbler *whitespaceGobbler = [[ARWhitespaceGobbler alloc] init];
-    whitespaceGobbler.backgroundColor = [UIColor whiteColor];
-    whitespaceGobbler.tag = ARFairShowViewWhitespaceAboveArtworks;
-    [self.view.stackView addSubview:whitespaceGobbler withTopMargin:nil sideMargin:nil];
 
     ARArtworkMasonryModule *module = [ARArtworkMasonryModule masonryModuleWithLayout:[self masonryLayoutForSize:self.view.frame.size] andStyle:AREmbeddedArtworkPresentationStyleArtworkMetadata];
     module.layoutProvider = self;
@@ -369,17 +353,11 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
     self.showArtworksViewController.showTrailingLoadingIndicator = YES;
     [self.view.stackView addViewController:self.showArtworksViewController toParent:self withTopMargin:@"0" sideMargin:nil];
 
-    @weakify(self);
+    @_weakify(self);
     [self getArtworksAtPage:1 onArtworks:^(NSArray *artworks) {
-        @strongify(self);
+        @_strongify(self);
         if (artworks.count > 0) {
-            if (whitespaceGobbler) {
-                [self.view.stackView removeSubview:whitespaceGobbler];
-                [self.showArtworksViewController appendItems:artworks];
-                whitespaceGobbler = nil;
-            } else {
-                [self.showArtworksViewController appendItems:artworks];
-            }
+            [self.showArtworksViewController appendItems:artworks];
         } else {
             self.showArtworksViewController.showTrailingLoadingIndicator = NO;
             [self.showArtworksViewController.view invalidateIntrinsicContentSize];
@@ -391,9 +369,9 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 {
     NSParameterAssert(onArtworks);
 
-    @weakify(self);
+    @_weakify(self);
     [self.showNetworkModel getArtworksAtPage:page success:^(NSArray *artworks) {
-        @strongify(self);
+        @_strongify(self);
         onArtworks(artworks);
         if (artworks.count > 0) {
             [self getArtworksAtPage:page + 1 onArtworks:onArtworks];
@@ -422,9 +400,9 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 
 - (void)addMapPreview
 {
-    @weakify(self);
+    @_weakify(self);
     [self.showNetworkModel getFairMaps:^(NSArray *maps) {
-        @strongify(self);
+        @_strongify(self);
 
         Map *map = maps.firstObject;
         if (!map) { return; }
@@ -493,7 +471,7 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 {
     Partner *partner = self.show.partner;
     UIViewController *viewController = [ARSwitchBoard.sharedInstance loadPartnerWithID:partner.profileID];
-    [self.navigationController pushViewController:viewController animated:self.shouldAnimate];
+    [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
 }
 
 - (BOOL)shouldAutorotate
@@ -521,13 +499,13 @@ self.actionButtonsView.actionButtonDescriptions = descriptions;
 
 - (void)embeddedModelsViewController:(AREmbeddedModelsViewController *)controller shouldPresentViewController:(UIViewController *)viewController
 {
-    [self.navigationController pushViewController:viewController animated:self.shouldAnimate];
+    [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
 }
 
 - (void)embeddedModelsViewController:(AREmbeddedModelsViewController *)controller didTapItemAtIndex:(NSUInteger)index
 {
     ARArtworkSetViewController *viewController = [ARSwitchBoard.sharedInstance loadArtworkSet:self.showArtworksViewController.items inFair:self.fair atIndex:index];
-    [self.navigationController pushViewController:viewController animated:self.shouldAnimate];
+    [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
 }
 
 #pragma mark - Public Methods

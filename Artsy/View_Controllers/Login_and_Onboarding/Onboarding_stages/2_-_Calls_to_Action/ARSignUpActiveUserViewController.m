@@ -10,16 +10,6 @@
 
 @implementation ARSignUpActiveUserViewController
 
-- (instancetype)init
-{
-    self = [super init];
-    if (!self) {
-        return nil;
-    }
-    _shouldAnimate = YES;
-    return self;
-}
-
 - (void)setTrialContext:(enum ARTrialContext)context
 {
     _trialContext = context;
@@ -63,6 +53,7 @@
             break;
 
         case ARTrialContextFairGuide:
+        case ARTrialContextNotifications:
             message = @"Sign up for a free account\nto get personal recommendations.";
             break;
 

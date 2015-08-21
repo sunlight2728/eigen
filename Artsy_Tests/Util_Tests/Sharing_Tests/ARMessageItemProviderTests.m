@@ -16,7 +16,7 @@ describe(@"message provider", ^{
     __block ARMessageItemProvider *provider;
     __block NSString *placeHolderMessage = @"So And So";
     __block NSString *path = @"artist/so-and-so";
-    __block UIActivityViewController *activityVC = [[UIActivityViewController alloc] init];
+    __block UIActivityViewController *activityVC = [[UIActivityViewController alloc] initWithActivityItems:@[] applicationActivities:@[]];
 
     describe(@"provider", ^{
         beforeEach(^{
@@ -63,7 +63,7 @@ describe(@"message provider", ^{
 
         it(@"formats HTML for Mail", ^{
             [(ARMessageItemProvider *)[[providerMock stub] andReturn:UIActivityTypeMail] activityType];
-            NSString *email = [NSString stringWithFormat: @"<html><body><a href='%@%@'>%@</a></body></html>",
+            NSString *email = [NSString stringWithFormat: @"<html><body><a href='%@/%@'>%@</a></body></html>",
                                [ARRouter baseWebURL].absoluteString, path, @"So And So on Artsy"];
             expect([provider item]).to.equal(email);
         });

@@ -28,22 +28,18 @@
 @end
 
 
-@interface ARFairSearchViewController (Testing)
-@property (nonatomic, readwrite, assign) BOOL shouldAnimate;
-@end
-
 SpecBegin(ARFairViewController);
 
 it(@"maps bindings correctly", ^{
     ARFairViewController *viewController = [[ARFairViewController alloc] initWithFair:nil];
 
     expect(viewController.displayingSearch).to.beFalsy();
-    expect(viewController.hidesBackButton).to.beFalsy();
+    expect(viewController.hidesNavigationButtons).to.beFalsy();
 
     viewController.searchVC = [[ARFairSearchViewController alloc] initWithFair:nil];
 
     expect(viewController.displayingSearch).to.beTruthy();
-    expect(viewController.hidesBackButton).to.beTruthy();
+    expect(viewController.hidesNavigationButtons).to.beTruthy();
 });
 
 __block Fair *bannerlessFair;
@@ -226,7 +222,6 @@ context(@"with a map", ^{
     
     it(@"search view looks correct", ^{
         [fairVC searchFieldButtonWasPressed:nil];
-        fairVC.searchVC.shouldAnimate = NO;
         [fairVC.searchVC beginAppearanceTransition:YES animated:NO];
         [fairVC.searchVC endAppearanceTransition];
         expect(fairVC.view).to.haveValidSnapshot();

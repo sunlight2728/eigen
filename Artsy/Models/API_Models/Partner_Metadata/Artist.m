@@ -69,15 +69,15 @@
 
 - (void)setFollowState:(BOOL)state success:(void (^)(id))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+    @_weakify(self);
     [ArtsyAPI setFavoriteStatus:state forArtist:self success:^(id response) {
-        @strongify(self);
+        @_strongify(self);
         self.followed = state;
         if (success) {
             success(response);
         }
     } failure:^(NSError *error) {
-        @strongify(self);
+        @_strongify(self);
         self.followed = !state;
         if (failure) {
             failure(error);
@@ -92,15 +92,15 @@
         return;
     }
 
-    @weakify(self);
+    @_weakify(self);
     [ArtsyAPI checkFavoriteStatusForArtist:self success:^(BOOL result) {
-        @strongify(self);
+        @_strongify(self);
         self.followed = result;
         success(result ? ARHeartStatusYes : ARHeartStatusNo);
     } failure:failure];
 }
 
-- (AFJSONRequestOperation *)getArtworksAtPage:(NSInteger)page andParams:(NSDictionary *)params success:(void (^)(NSArray *artworks))success
+- (AFHTTPRequestOperation *)getArtworksAtPage:(NSInteger)page andParams:(NSDictionary *)params success:(void (^)(NSArray *artworks))success
 {
     return [ArtsyAPI getArtistArtworks:self andPage:page withParams:params success:^(NSArray *artworks) {
         success(artworks);
@@ -130,7 +130,7 @@
     return self.artistID.hash;
 }
 
-- (AFJSONRequestOperation *)getRelatedPosts:(void (^)(NSArray *posts))success
+- (AFHTTPRequestOperation *)getRelatedPosts:(void (^)(NSArray *posts))success
 {
     return [ArtsyAPI getRelatedPostsForArtist:self
                                       success:success
@@ -139,7 +139,7 @@
                                       }];
 }
 
-- (AFJSONRequestOperation *)getRelatedArtists:(void (^)(NSArray *artists))success
+- (AFHTTPRequestOperation *)getRelatedArtists:(void (^)(NSArray *artists))success
 {
     return [ArtsyAPI getRelatedArtistsForArtist:self
                                         success:success

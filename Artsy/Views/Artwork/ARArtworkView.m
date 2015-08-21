@@ -53,7 +53,7 @@ static const CGFloat ARArtworkImageHeightAdjustmentForPhone = -56;
     self.artworkBlurbView = artworkBlurbView;
 
     ARSpinner *spinner = [[ARSpinner alloc] initWithFrame:CGRectMake(0, 0, 44, 44)];
-    [spinner fadeInAnimated:self.parentViewController.shouldAnimate];
+    [spinner fadeInAnimated:ARPerformWorkAsynchronously];
     spinner.tag = ARArtworkSpinner;
     self.spinner = spinner;
     [spinner constrainHeight:@"100"];
@@ -70,8 +70,19 @@ static const CGFloat ARArtworkImageHeightAdjustmentForPhone = -56;
     gobbler.tag = ARArtworkGobbler;
     self.gobbler = gobbler;
 
-    [self setUpSubviews];
     return self;
+}
+
+- (void)didMoveToSuperview
+{
+    if (self.superview) {
+        // It seems like UIPageViewController (?) adds some temporary constraints that cause breakage with our
+        // constraints. Seting up our constraints from here instead works around that issue.
+        [self setUpSubviews];
+
+        [self setUpCallbacks];
+        [self createHeightConstraints];
+    }
 }
 
 - (void)setUpSubviews
@@ -96,16 +107,16 @@ static const CGFloat ARArtworkImageHeightAdjustmentForPhone = -56;
 
 - (void)setUpCallbacks
 {
-    @weakify(self);
+    @_weakify(self);
 
     void (^completion)(void) = ^{
-        @strongify(self);
-        [self.spinner fadeOutAnimated:self.parentViewController.shouldAnimate];
+        @_strongify(self);
+        [self.spinner fadeOutAnimated:ARPerformWorkAsynchronously];
         [self.stackView removeSubview:self.spinner];
     };
 
     [self.artwork onArtworkUpdate:^{
-        @strongify(self);
+        @_strongify(self);
         [self artworkUpdated];
 
         completion();
@@ -114,7 +125,7 @@ static const CGFloat ARArtworkImageHeightAdjustmentForPhone = -56;
     }];
 
     [self.artwork onFairUpdate:^(Fair *fair) {
-        @strongify(self);
+        @_strongify(self);
         if (!self || !fair) return;
 
         [self.metadataView updateWithFair:fair];
@@ -122,11 +133,11 @@ static const CGFloat ARArtworkImageHeightAdjustmentForPhone = -56;
     } failure:nil];
 
     [self.artwork onSaleArtworkUpdate:^(SaleArtwork *saleArtwork) {
-        @strongify(self);
+        @_strongify(self);
         if (saleArtwork.auctionState & ARAuctionStateUserIsBidder) {
             [ARAnalytics setUserProperty:@"has_placed_bid" toValue:@"true"];
             self.banner.auctionState = saleArtwork.auctionState;
-            [UIView animateIf:self.parentViewController.shouldAnimate duration:ARAnimationDuration :^{
+            [UIView animateIf:ARPerformWorkAsynchronously duration:ARAnimationDuration :^{
                 [self.banner updateHeightConstraint];
                 [self.stackView layoutIfNeeded];
             }];
@@ -152,14 +163,6 @@ static const CGFloat ARArtworkImageHeightAdjustmentForPhone = -56;
     if (newSuperview) {
         CGSize size = newSuperview.frame.size;
         [self.metadataView updateConstraintsIsLandscape:size.width > size.height];
-    }
-}
-
-- (void)didMoveToSuperview
-{
-    if (self.superview) {
-        [self setUpCallbacks];
-        [self createHeightConstraints];
     }
 }
 

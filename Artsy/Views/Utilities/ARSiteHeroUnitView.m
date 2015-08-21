@@ -70,14 +70,14 @@ static CGFloat ARHeroUnitDescriptionFont;
     [textViewsContainer alignLeadingEdgeWithView:self predicate:NSStringWithFormat(@"%f", ARHeroUnitSideMargin * leftMarginMultiplier)];
     [textViewsContainer alignTrailingEdgeWithView:self predicate:NSStringWithFormat(@"-%f", ARHeroUnitSideMargin * rightMarginMultiplier)];
 
-    UILabel *headingLabel = [self createHeadingLabelWithText:unit.heading];
+    UILabel *headingLabel = [self createHeadingLabelWithText:unit.heading ?: @""];
     UIView *titleView;
     if ([UIDevice isPad] && unit.titleImageURL) {
         titleView = [self createTitleImageWithImageURL:unit.titleImageURL];
     } else {
-        titleView = [self createTitleLabelWithText:unit.title];
+        titleView = [self createTitleLabelWithText:unit.title ?: @""];
     }
-    UILabel *descriptionLabel = [self createDescriptionLabelWithText:unit.body];
+    UILabel *descriptionLabel = [self createDescriptionLabelWithText:unit.body ?: @""];
 
     [textViewsContainer addSubview:headingLabel withTopMargin:nil sideMargin:nil];
 
@@ -91,9 +91,9 @@ static CGFloat ARHeroUnitDescriptionFont;
         ARHeroUnitButton *button = [self createButtonWithColor:unit.buttonColor inverseColor:unit.inverseButtonColor andText:unit.linkText];
         [textViewsContainer addSubview:button withTopMargin:NSStringWithFormat(@"%f", ARHeroUnitDescriptionButtonMargin)];
         if (self.alignment == ARHeroUnitAlignmentRight) {
-            [button alignTrailingEdgeWithView:textViewsContainer predicate:nil];
+            [button alignTrailingEdgeWithView:textViewsContainer predicate:@"0"];
         } else {
-            [button alignLeadingEdgeWithView:textViewsContainer predicate:nil];
+            [button alignLeadingEdgeWithView:textViewsContainer predicate:@"0"];
         }
         UILabel *credit = [self createCreditLabelWithText:unit.creditLine];
         [textViewsContainer addSubview:credit withTopMargin:NSStringWithFormat(@"%f", ARHeroUnitButtonCreditMargin) sideMargin:nil];
@@ -143,9 +143,9 @@ static CGFloat ARHeroUnitDescriptionFont;
 - (UIImageView *)createTitleImageWithImageURL:(NSURL *)titleImageURL
 {
     UIImageView *titleImageView = [[UIImageView alloc] init];
-    @weakify(titleImageView);
+   @_weakify(titleImageView);
     [titleImageView ar_setImageWithURL:titleImageURL completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
-            @strongify(titleImageView);
+            @_strongify(titleImageView);
             titleImageView.image = [UIImage imageWithCGImage:image.CGImage scale:2.58 orientation:image.imageOrientation];
     }];
     if (self.alignment == ARHeroUnitAlignmentRight) {

@@ -101,7 +101,7 @@
         self.searchButton = [[ARSearchFieldButton alloc] init];
         self.searchButton.delegate = self;
         [self.view addSubview:self.searchButton];
-        [self.searchButton constrainTopSpaceToView:(UIView *)self.topLayoutGuide predicate:@"17"];
+        [self.searchButton constrainTopSpaceToView:self.flk_topLayoutGuide predicate:@"17"];
         [self.searchButton alignTrailingEdgeWithView:self.view predicate:@"-20"];
 
         CGFloat width = CGRectGetWidth(self.view.bounds) - 80;
@@ -116,16 +116,17 @@
 
         [self.view addSubview:self.titleLabel];
         NSString *top = [@(10 + ([self.parentViewController isKindOfClass:[UINavigationController class]] ? 20 : 0)) stringValue];
-        [self.titleLabel alignTop:top leading:@"60" bottom:nil trailing:@"-60" toView:self.view];
+        [self.titleLabel alignTopEdgeWithView:self.view predicate:top];
+        [self.titleLabel alignLeading:@"60" trailing:@"-60" toView:self.view];
         [self.titleLabel constrainHeight:@">=44"];
     }
 
     RAC(self.mapShowMapper, expandAnnotations) = RACObserve(self, expandAnnotations);
 
     // Due to a problem in the custom UIViewController transitions API (when the VC's view is a scrollview subclass)
-    @weakify(self);
+    @_weakify(self);
     [[self rac_signalForSelector:@selector(viewWillDisappear:)] subscribeNext:^(id x) {
-        @strongify(self);
+        @_strongify(self);
 
         CGPoint contentOffset = self.mapView.contentOffset;
 
@@ -206,7 +207,7 @@
     return [NSSet setWithObjects:@"searchVC.menuState", nil];
 }
 
-- (BOOL)hidesBackButton
+- (BOOL)hidesNavigationButtons
 {
     if (self.searchVC) {
         return YES;

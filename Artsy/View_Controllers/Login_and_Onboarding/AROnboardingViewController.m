@@ -79,14 +79,14 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
     self.screenSwipeGesture.edges = UIRectEdgeLeft;
     [self.view addGestureRecognizer:self.screenSwipeGesture];
 
-    @weakify(self);
+    @_weakify(self);
 
     [ArtsyAPI getXappTokenWithCompletion:^(NSString *xappToken, NSDate *expirationDate) {
-        @strongify(self);
+        @_strongify(self);
 
-        @weakify(self);
+       @_weakify(self);
         [ArtsyAPI getPersonalizeGenesWithSuccess:^(NSArray *genes) {
-            @strongify(self);
+            @_strongify(self);
             self.genesForPersonalize = genes;
         } failure:^(NSError *error) {
             ARErrorLog(@"Couldn't get personalize genes. Error: %@", error.localizedDescription);
@@ -134,6 +134,14 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
     }
 
     [super viewWillAppear:animated];
+}
+
+// TODO On iOS 9 the status bar is shown *after* viewWillAppear: is called and I have not yet found a better place to
+//      make sure it never shows. This way it is shown for a very short period, but that’s better than nothing.
+- (void)viewDidAppear:(BOOL)animated;
+{
+   [[UIApplication sharedApplication] setStatusBarHidden:YES];
+   [super viewDidAppear:animated];
 }
 
 #pragma mark -
@@ -219,7 +227,11 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
 
 - (void)didSignUpAndLogin
 {
-    [self presentOnboarding];
+    if (self.trialContext == ARTrialContextAuctionBid) {
+        [self dismissOnboardingWithVoidAnimation:YES];
+    } else {
+        [self presentOnboarding];
+    }
 }
 
 
@@ -324,9 +336,9 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
 {
     self.backgroundWidthConstraint.constant = 0;
     self.backgroundHeightConstraint.constant = 0;
-    @weakify(self);
+    @_weakify(self);
     [UIView animateIf:animated duration:ARAnimationQuickDuration:^{
-        @strongify(self);
+        @_strongify(self);
         [self.backgroundView layoutIfNeeded];
         self.backgroundView.alpha = 1;
         self.backgroundView.backgroundColor = [UIColor clearColor];
@@ -370,10 +382,10 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
 
 - (void)signUpWithFacebook
 {
-    @weakify(self);
+    @_weakify(self);
     [self ar_presentIndeterminateLoadingIndicatorAnimated:YES];
     [ARAuthProviders getTokenForFacebook:^(NSString *token, NSString *email, NSString *name) {
-        @strongify(self);
+        @_strongify(self);
 
         AROnboardingMoreInfoViewController *more = [[AROnboardingMoreInfoViewController alloc] initForFacebookWithToken:token email:email name:name];
         more.delegate = self;
@@ -381,7 +393,7 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
         [self pushViewController:more animated:YES];
 
     } failure:^(NSError *error) {
-        @strongify(self);
+        @_strongify(self);
 
         [self ar_removeIndeterminateLoadingIndicatorAnimated:YES];
 
@@ -396,9 +408,9 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
 {
     [self ar_presentIndeterminateLoadingIndicatorAnimated:YES];
 
-    @weakify(self);
+    @_weakify(self);
     [ARAuthProviders getReverseAuthTokenForTwitter:^(NSString *token, NSString *secret) {
-        @strongify(self);
+        @_strongify(self);
 
         AROnboardingMoreInfoViewController *more = [[AROnboardingMoreInfoViewController alloc]
                                                     initForTwitterWithToken:token andSecret:secret];
@@ -407,7 +419,7 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
         [self pushViewController:more animated:YES];
 
     } failure:^(NSError *error) {
-        @strongify(self);
+        @_strongify(self);
 
         [self ar_removeIndeterminateLoadingIndicatorAnimated:YES];
         [self twitterError];
@@ -483,8 +495,8 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
     self.backgroundView = [[UIImageView alloc] initWithFrame:CGRectZero];
     self.backgroundView.contentMode = UIViewContentModeScaleAspectFill;
     [self.view insertSubview:self.backgroundView atIndex:0];
-    self.backgroundWidthConstraint = [[self.backgroundView constrainWidthToView:self.view predicate:nil] lastObject];
-    self.backgroundHeightConstraint = [[self.backgroundView constrainHeightToView:self.view predicate:nil] lastObject];
+    self.backgroundWidthConstraint = [[self.backgroundView constrainWidthToView:self.view predicate:@"0"] lastObject];
+    self.backgroundHeightConstraint = [[self.backgroundView constrainHeightToView:self.view predicate:@"0"] lastObject];
     [self.backgroundView alignCenterWithView:self.view];
     [self.backgroundView layoutIfNeeded];
 }
@@ -547,9 +559,9 @@ typedef NS_ENUM(NSInteger, AROnboardingStage) {
 
     self.backgroundWidthConstraint.constant = offset * 2;
     self.backgroundHeightConstraint.constant = offset * 2;
-    @weakify(self);
+    @_weakify(self);
     [UIView animateIf:animated duration:ARAnimationQuickDuration:^{
-        @strongify(self);
+        @_strongify(self);
         [self.backgroundView layoutIfNeeded];
         self.backgroundView.image = blurImage;
         self.backgroundView.alpha = 0.3;

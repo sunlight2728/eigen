@@ -3,7 +3,6 @@
 
 
 @interface ARBrowseViewController (Tests)
-@property (nonatomic, assign, readwrite) BOOL shouldAnimate;
 @property (nonatomic, strong, readonly) NSArray *menuLinks;
 @property (nonatomic, strong, readonly) ARBrowseNetworkModel *networkModel;
 - (void)fetchMenuItems;
@@ -23,11 +22,30 @@ before(^{
 
     viewController = [[ARBrowseViewController alloc] init];
     viewController.networkModel = networkModel;
-    viewController.shouldAnimate = NO;
 });
 
 it(@"sets its menu items", ^{
     expect(viewController.menuLinks.count).will.equal(5);
+});
+
+it(@"fetches on viewDidAppear:", ^{
+    id networkModelMock = [OCMockObject niceMockForClass:[ARBrowseNetworkModel class]];
+    [[networkModelMock expect] getBrowseFeaturedLinks:OCMOCK_ANY failure:OCMOCK_ANY];
+    viewController.networkModel = networkModelMock;
+
+    [viewController viewDidAppear:false];
+
+    [networkModelMock verify];
+});
+
+it(@"doesn't fetch on viewDidAppear: if menu links present already", ^{
+    id networkModelMock = [OCMockObject partialMockForObject:viewController.networkModel];
+    [[networkModelMock reject] getBrowseFeaturedLinks:OCMOCK_ANY failure:OCMOCK_ANY];
+    viewController.networkModel = networkModelMock;
+
+    [viewController viewDidAppear:false];
+
+    [networkModelMock verify];
 });
 
 itHasSnapshotsForDevicesWithName(@"looks correct", ^{

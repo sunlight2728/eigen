@@ -10,7 +10,7 @@
 @property (nonatomic, assign, readwrite) NSInteger selectedIndex;
 @property (nonatomic, copy, readwrite) NSArray *searchResults;
 @property (nonatomic, copy, readonly) NSArray *resultsHistory;
-@property (nonatomic, strong, readonly) AFJSONRequestOperation *searchRequest;
+@property (nonatomic, strong, readonly) AFHTTPRequestOperation *searchRequest;
 
 @end
 
@@ -19,7 +19,7 @@
 
 #pragma mark - ARMenuAwareViewController
 
-- (BOOL)hidesBackButton
+- (BOOL)hidesNavigationButtons
 {
     return YES;
 }
@@ -142,9 +142,9 @@
     } else {
         [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
 
-        @weakify(self);
+        @_weakify(self);
         _searchRequest = [ArtsyAPI searchWithQuery:query success:^(NSArray *results) {
-            @strongify(self);
+            @_strongify(self);
             self.searchResults = [results copy];
             self.selectedIndex = 0;
 
@@ -179,11 +179,11 @@
 
     UIImage *placeholder = [UIImage imageNamed:@"SearchThumb_LightGray"];
 
-    @weakify(cell);
+    @_weakify(cell);
     [cell.imageView setImageWithURLRequest:result.imageRequest placeholderImage:placeholder
 
                                    success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image) {
-         @strongify(cell);
+         @_strongify(cell);
          cell.imageView.image = image;
          [cell layoutSubviews];
 

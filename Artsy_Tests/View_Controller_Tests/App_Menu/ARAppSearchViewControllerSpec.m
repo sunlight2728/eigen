@@ -3,7 +3,6 @@
 
 
 @interface ARAppSearchViewController (Testing)
-@property (readwrite, nonatomic) BOOL shouldAnimate;
 - (void)clearTapped:(id)sender;
 - (void)closeSearch:(id)sender;
 @end
@@ -15,7 +14,6 @@ __block ARAppSearchViewController *sut;
 
 dispatch_block_t sharedBefore = ^{
     sut = [[ARAppSearchViewController alloc] init];
-    sut.shouldAnimate = NO;
     [sut ar_presentWithFrame:[UIScreen mainScreen].bounds];
 
     [sut beginAppearanceTransition:YES animated:NO];
@@ -70,6 +68,10 @@ context(@"searching", ^{
                 }]
              ];
 
+            [OHHTTPStubs stubImageResponseAtPathWithDefault:@"/api/v1/artist/aes-plus-f/image"];
+            [OHHTTPStubs stubImageResponseAtPathWithDefault:@"/api/v1/artist/john-f-carlson/image"];
+            [OHHTTPStubs stubImageResponseAtPathWithDefault:@"/api/v1/artist/f-scott-hess/image"];
+
             sut.textField.text = @"f";
             [sut.textField sendActionsForControlEvents:UIControlEventEditingChanged];
 
@@ -107,7 +109,6 @@ context(@"searching", ^{
 it(@"clears search", ^{
     // custom clear button for dark color scheme
     sut = [[ARAppSearchViewController alloc] init];
-    sut.shouldAnimate = NO;
     [sut ar_presentWithFrame:[UIScreen mainScreen].bounds];
     sut.textField.text = @"s";
     [sut clearTapped:nil];
@@ -117,12 +118,12 @@ it(@"clears search", ^{
 
 it(@"closes search", ^{
     sut = [[ARAppSearchViewController alloc] init];
-    OCMockObject *topMenuViewControllerMock = [OCMockObject partialMockForObject:[ARTopMenuViewController sharedController]];
-    sut.shouldAnimate = NO;
+    UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:sut];
+    OCMockObject *navigationControllerMock = [OCMockObject partialMockForObject:navigationController];
     [sut ar_presentWithFrame:[UIScreen mainScreen].bounds];
-    [[topMenuViewControllerMock expect] returnToPreviousTab];
+    [[navigationControllerMock expect] popViewControllerAnimated:YES];
     [sut closeSearch:nil];
-    [topMenuViewControllerMock verify];
+    [navigationControllerMock verify];
 });
 
 SpecEnd

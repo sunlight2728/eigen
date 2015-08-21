@@ -70,10 +70,10 @@
 
 - (void)getFeedItemsWithCursor:(NSString *)cursor success:(void (^)(NSOrderedSet *))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+   @_weakify(self);
     if (self.JSON) {
+      
         // We may get asked multiple times before we finished extracting the data
-
         if (self.parsing) {
             return;
         }
@@ -81,7 +81,6 @@
         self.parsing = YES;
 
         // If we've background fetch'd a copy of the feed, we should use that on the first grab of show data
-
         ar_dispatch_async(^{
             @strongify(self);
             NSOrderedSet *items = [self parseItemsFromJSON:self.JSON];
@@ -100,7 +99,7 @@
     NSInteger pageSize = (cursor) ? 4 : 1;
     [ArtsyAPI getFeedResultsForShowsWithCursor:cursor pageSize:pageSize success:^(id JSON) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            @strongify(self);
+            @_strongify(self);
             NSOrderedSet *items = [self parseItemsFromJSON:JSON];
             dispatch_async(dispatch_get_main_queue(), ^{
                 success(items);
@@ -136,9 +135,9 @@
 
 - (void)getFeedItemsWithCursor:(NSString *)cursor success:(void (^)(NSOrderedSet *))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+   @_weakify(self);
     [ArtsyAPI getFeedResultsForProfile:self.profile withCursor:cursor success:^(id JSON) {
-        @strongify(self);
+        @_strongify(self);
         success([self parseItemsFromJSON:JSON]);
     } failure:failure];
 }
@@ -169,10 +168,10 @@
 
 - (void)getFeedItemsWithCursor:(NSString *)cursor success:(void (^)(NSOrderedSet *))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+   @_weakify(self);
     [ArtsyAPI getFeedResultsForFairOrganizer:self.fairOrganizer withCursor:cursor success:^(id JSON) {
         ar_dispatch_async(^{
-            @strongify(self);
+            @_strongify(self);
             NSOrderedSet *items = [self parseItemsFromJSON:JSON];
 
             ar_dispatch_main_queue(^{
@@ -215,11 +214,11 @@
 
 - (void)getFeedItemsWithCursor:(NSString *)cursor success:(void (^)(NSOrderedSet *))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+   @_weakify(self);
 
     [ArtsyAPI getFeedResultsForFairShows:self.fair partnerID:self.partner.partnerID withCursor:cursor success:^(id JSON) {
         ar_dispatch_async(^{
-            @strongify(self);
+            @_strongify(self);
 
             NSOrderedSet *items = [self parseItemsFromJSON:JSON];
 
