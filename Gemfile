@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'cocoapods'
+gem 'cocoapods', :git => "https://github.com/CocoaPods/CocoaPods.git", :branch => "mr-static-link-aggregate-target"
 gem 'cocoapods-keys'
 gem 'cocoapods-deintegrate'
 

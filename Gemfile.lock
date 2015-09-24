@@ -1,4 +1,25 @@
 GIT
+  remote: https://github.com/CocoaPods/CocoaPods.git
+  revision: deb4933f93b7fa51ef7e3fd9261333cf7abc1cd5
+  branch: mr-static-link-aggregate-target
+  specs:
+    cocoapods (0.39.0.beta.4)
+      activesupport (>= 3.2.15)
+      claide (~> 0.9.1)
+      cocoapods-core (= 0.39.0.beta.4)
+      cocoapods-downloader (~> 0.9.3)
+      cocoapods-plugins (~> 0.4.2)
+      cocoapods-search (~> 0.1.0)
+      cocoapods-stats (~> 0.6.1)
+      cocoapods-trunk (~> 0.6.4)
+      cocoapods-try (~> 0.5.1)
+      colored (~> 1.2)
+      escape (~> 0.0.4)
+      molinillo (~> 0.3.1)
+      nap (~> 1.0)
+      xcodeproj (~> 0.27.2)
+
+GIT
   remote: https://github.com/ashfurrow/second_curtain.git
   revision: 2f388f5aca8496c14c4c72ac5a726529b7dedb80
   branch: improved_parse
@@ -37,24 +58,10 @@ GEM
     certified (1.0.0)
     claide (0.9.1)
     cliver (0.3.2)
-    cocoapods (0.38.2)
-      activesupport (>= 3.2.15)
-      claide (~> 0.9.1)
-      cocoapods-core (= 0.38.2)
-      cocoapods-downloader (~> 0.9.1)
-      cocoapods-plugins (~> 0.4.2)
-      cocoapods-stats (~> 0.5.3)
-      cocoapods-trunk (~> 0.6.1)
-      cocoapods-try (~> 0.4.5)
-      colored (~> 1.2)
-      escape (~> 0.0.4)
-      molinillo (~> 0.3.1)
-      nap (~> 0.8)
-      xcodeproj (~> 0.26.3)
-    cocoapods-core (0.38.2)
+    cocoapods-core (0.39.0.beta.4)
       activesupport (>= 3.2.15)
       fuzzy_match (~> 2.0.4)
-      nap (~> 0.8.0)
+      nap (~> 1.0)
     cocoapods-deintegrate (0.2.1)
       cocoapods (~> 0.34)
     cocoapods-downloader (0.9.3)
@@ -62,12 +69,12 @@ GEM
       osx_keychain
     cocoapods-plugins (0.4.2)
       nap
-    cocoapods-stats (0.5.3)
-      nap (~> 0.8)
+    cocoapods-search (0.1.0)
+    cocoapods-stats (0.6.1)
     cocoapods-trunk (0.6.4)
       nap (>= 0.8, < 2.0)
       netrc (= 0.7.8)
-    cocoapods-try (0.4.5)
+    cocoapods-try (0.5.1)
     colored (1.2)
     commander (4.3.5)
       highline (~> 1.7.2)
@@ -175,13 +182,13 @@ GEM
     mime-types (1.25.1)
     mini_magick (4.0.4)
     mini_portile (0.6.2)
-    minitest (5.8.0)
+    minitest (5.8.1)
     molinillo (0.3.1)
     multi_json (1.11.2)
     multi_xml (0.5.5)
     multipart-post (1.2.0)
     mustache (0.99.8)
-    nap (0.8.0)
+    nap (1.0.0)
     net-http-digest_auth (1.4)
     net-http-persistent (2.9.4)
     net-sftp (2.1.2)
@@ -250,7 +257,7 @@ GEM
     websocket-driver (0.6.2)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.2)
-    xcodeproj (0.26.3)
+    xcodeproj (0.27.2)
       activesupport (>= 3)
       claide (~> 0.9.1)
       colored (~> 1.2)
@@ -262,7 +269,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  cocoapods
+  cocoapods!
   cocoapods-deintegrate
   cocoapods-keys
   fastlane
