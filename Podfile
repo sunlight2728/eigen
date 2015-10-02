@@ -45,7 +45,7 @@ target 'Artsy' do
   pod 'ISO8601DateFormatter', :head
   pod 'JLRoutes'
   pod 'JSBadgeView'
-  pod 'JSDecoupledAppDelegate'
+  pod 'JSDecoupledAppDelegate', :head
   pod 'Mantle'
   pod 'MMMarkdown'
   pod 'NPKeyboardLayoutGuide'

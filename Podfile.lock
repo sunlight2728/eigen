@@ -101,7 +101,7 @@ PODS:
   - ISO8601DateFormatter (HEAD based on 0.7)
   - JLRoutes (1.5)
   - JSBadgeView (1.4.1)
-  - JSDecoupledAppDelegate (1.1.0)
+  - JSDecoupledAppDelegate (HEAD based on 1.1.0)
   - Keys (1.0.0)
   - KSDeferred (0.2.0)
   - libextobjc/EXTKeyPathCoding (0.4):
@@ -175,7 +175,7 @@ DEPENDENCIES:
   - ISO8601DateFormatter (HEAD)
   - JLRoutes
   - JSBadgeView
-  - JSDecoupledAppDelegate
+  - JSDecoupledAppDelegate (HEAD)
   - Keys (from `Pods/CocoaPodsKeys`)
   - KSDeferred
   - libextobjc/EXTKeyPathCoding
