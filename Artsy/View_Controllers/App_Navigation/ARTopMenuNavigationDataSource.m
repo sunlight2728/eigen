@@ -3,6 +3,7 @@
 #import "ARBrowseViewController.h"
 #import "ARFavoritesViewController.h"
 #import "ARHeroUnitsNetworkModel.h"
+#import "ARShowLocationsViewController.h"
 #import "ARTopMenuInternalMobileWebViewController.h"
 #import <SDWebImage/SDWebImagePrefetcher.h>
 
@@ -54,7 +55,12 @@ WebViewNavigationControllerWithPath(NSString *path)
     _showFeedViewController.heroUnitDatasource = [[ARHeroUnitsNetworkModel alloc] init];
     _feedNavigationController = [[ARNavigationController alloc] initWithRootViewController:_showFeedViewController];
 
-    _showsNavigationController = WebViewNavigationControllerWithPath(@"/shows");
+    if ([UIDevice isPad]) {
+        _showsNavigationController = WebViewNavigationControllerWithPath(@"/shows");
+    } else {
+        ARShowLocationsViewController *martsyShows = [[ARShowLocationsViewController alloc] init];
+        _showsNavigationController = [[ARNavigationController alloc] initWithRootViewController:martsyShows];
+    }
 
     _browseViewController = [[ARBrowseViewController alloc] init];
     _browseViewController.networkModel = [[ARBrowseNetworkModel alloc] init];
