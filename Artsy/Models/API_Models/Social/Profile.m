@@ -1,4 +1,15 @@
+#import "Profile.h"
 
+#import "ArtsyAPI+Profiles.h"
+#import "Fair.h"
+#import "FairOrganizer.h"
+#import "Partner.h"
+#import "ProfileOwner.h"
+#import "User.h"
+#import "ARMacros.h"
+
+#import "MTLModel+JSON.h"
+#import <ObjectiveSugar/ObjectiveSugar.h>
 
 
 @interface Profile () {
@@ -21,12 +32,12 @@
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @"profileID" : @"id",
-        @"ownerJSON" : @"owner",
-        @"ownerClassString" : @"owner_type",
-        @"followCount" : @"follow_count",
-        @"iconVersion" : @"default_icon_version",
-        @"iconURLs" : @"icon.image_urls",
+        ar_keypath(Profile.new, profileID) : @"id",
+        ar_keypath(Profile.new, ownerJSON) : @"owner",
+        ar_keypath(Profile.new, ownerClassString) : @"owner_type",
+        ar_keypath(Profile.new, followCount) : @"follow_count",
+        ar_keypath(Profile.new, iconVersion) : @"default_icon_version",
+        ar_keypath(Profile.new, iconURLs) : @"icon.image_urls",
     };
 }
 
@@ -58,13 +69,13 @@
 
 - (void)updateProfile:(void (^)(void))success
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
 
     if (self.profileID) {
         [ArtsyAPI getProfileForProfileID:self.profileID success:^(Profile *profile) {
-            @strongify(self);
+            __strong typeof (wself) sself = wself;
 
-            [self mergeValuesForKeysFromModel:profile];
+            [sself mergeValuesForKeysFromModel:profile];
             success();
 
         } failure:^(NSError *error) {
@@ -86,6 +97,14 @@
         }
     }
     return nil;
+}
+
+- (NSString *)avatarURLString
+{
+    NSArray *desiredVersions = @[ @"square", @"square140", @"large" ];
+    NSArray *possibleVersions = [desiredVersions intersectionWithArray:[self.iconURLs allKeys]];
+    // If we can't find one of our desired values, default to the first available icon URL.
+    return [self.iconURLs objectForKey:possibleVersions.firstObject] ?: [[self.iconURLs allValues] firstObject];
 }
 
 - (NSString *)description
@@ -156,11 +175,6 @@
 
 - (void)getFollowState:(void (^)(ARHeartStatus status))success failure:(void (^)(NSError *error))failure
 {
-    if ([User isTrialUser]) {
-        success(ARHeartStatusNo);
-        return;
-    }
-
     [ArtsyAPI checkFollowProfile:self success:^(BOOL status) {
         success(status);
     } failure:failure];

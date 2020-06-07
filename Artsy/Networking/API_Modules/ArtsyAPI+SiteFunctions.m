@@ -1,4 +1,13 @@
+#import "ARLogger.h"
 #import "ArtsyAPI+Private.h"
+#import "ARRouter.h"
+#import "Profile.h"
+#import "SiteFeature.h"
+#import "SiteHeroUnit.h"
+#import "User.h"
+
+#import "MTLModel+JSON.h"
+
 
 NSString *const ArtsyAPIInquiryAnalyticsInquiryURL = @"ArtsyAPIInquiryAnalyticsInquiryURL";
 NSString *const ArtsyAPIInquiryAnalyticsReferralURL = @"ArtsyAPIInquiryAnalyticsReferralURL";
@@ -18,11 +27,11 @@ NSString *const ArtsyAPIInquiryAnalyticsLandingURL = @"ArtsyAPIInquiryAnalyticsL
                   failure:(void (^)(NSError *error))failure
 {
     NSParameterAssert(success);
-    @weakify(self);
+    __weak typeof (self) wself = self;
 
     NSURLRequest *request = [ARRouter newOnDutyRepresentativeRequest];
     [self performRequest:request success:^(NSArray *results) {
-        @strongify(self);
+        __strong typeof (wself) sself = wself;
         if ([results count] == 0) {
             success(nil);
         } else {
@@ -37,7 +46,7 @@ NSString *const ArtsyAPIInquiryAnalyticsLandingURL = @"ArtsyAPIInquiryAnalyticsL
             success(contact);
 
             NSURLRequest *profileRequest = [ARRouter newProfileInfoRequestWithID:contact.defaultProfileID];
-            [self getRequest:profileRequest parseIntoAClass:[Profile class] success:profile failure:failure];
+            [sself getRequest:profileRequest parseIntoAClass:[Profile class] success:profile failure:failure];
         }
     } failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error) {
         if (failure) {

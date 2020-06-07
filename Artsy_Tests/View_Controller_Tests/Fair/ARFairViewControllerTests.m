@@ -221,6 +221,8 @@ context(@"with a map", ^{
     });
     
     it(@"search view looks correct", ^{
+        [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/fair/fair-id" withResponse:@{@"id" : @"a-fair-affair"}];
+        [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/fair/fair-id/shows" withResponse:@{}];
         [fairVC searchFieldButtonWasPressed:nil];
         [fairVC.searchVC beginAppearanceTransition:YES animated:NO];
         [fairVC.searchVC endAppearanceTransition];
@@ -229,7 +231,7 @@ context(@"with a map", ^{
 });
 
 it(@"creates an NSUserActivity", ^{
-    
+    [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/set/set-id/items" withResponse:@{}];
     Fair *fair = [Fair modelWithJSON:@{
         @"id" : @"a-fair-affair",
         @"name" : @"The Fair Affair",

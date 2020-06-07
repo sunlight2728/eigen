@@ -1,5 +1,5 @@
 #import <CoreLocation/CoreLocation.h>
-
+#import <Mantle/Mantle.h>
 
 @interface Location : MTLModel <MTLJSONSerializing>
 
@@ -15,6 +15,7 @@
 
 @property (nonatomic, copy, readonly) NSNumber *longitude;
 @property (nonatomic, copy, readonly) NSNumber *latitude;
+
 - (NSDictionary *)coordinatesAsDictionary;
 - (CLLocation *)clLocation;
 

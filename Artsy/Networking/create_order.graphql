@@ -1,0 +1,22 @@
+mutation createOrder(
+  $input: CreateOrderWithArtworkInput!
+) {
+  ecommerceCreateOrderWithArtwork(
+    input: $input
+  ) {
+    orderOrError {
+      ... on OrderWithMutationSuccess {
+        order {
+          id
+        }
+      }
+      ... on OrderWithMutationFailure {
+        error {
+          type
+          code
+          data
+        }
+      }
+    }
+  }
+}

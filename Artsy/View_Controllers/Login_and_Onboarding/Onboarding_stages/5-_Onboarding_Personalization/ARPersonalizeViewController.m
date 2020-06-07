@@ -1,421 +1,959 @@
 #import "ARPersonalizeViewController.h"
-#import "AROnboardingGeneTableController.h"
-#import "AROnboardingArtistTableController.h"
-#import "AROnboardingSearchField.h"
-#import "AROnboardingFollowableTableViewCell.h"
 
-static NSString *SearchCellId = @"OnboardingSearchCell";
+#import "Artist.h"
+#import "ArtsyAPI+Search.h"
+#import "ArtsyAPI+RelatedModels.h"
+#import "AROnboardingPersonalizeTableViewController.h"
+#import "AROnboardingNavigationItemsView.h"
+#import "AROnboardingHeaderView.h"
+#import "ARAcceptConditionsView.h"
+#import "ARLoginFieldsView.h"
+#import "ARTextFieldWithPlaceholder.h"
+#import "ARSecureTextFieldWithPlaceholder.h"
+#import "ARLoginButtonsView.h"
+#import "ARPriceRangeViewController.h"
+#import "Gene.h"
+#import "ARLogger.h"
+
+#import "MTLModel+JSON.h"
+
+#import "Artsy-Swift.h"
+
+#import <Artsy-UIButtons/ARButtonSubclasses.h>
+#import <UIView+BooleanAnimations/UIView+BooleanAnimations.h>
+#import <ObjectiveSugar/ObjectiveSugar.h>
+#import <AFNetworking/AFNetworking.h>
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+
+// maxim's sneaky last comment in Eigen (for a dummy commit). This can be removed when you find it ;).
+
+@interface ARPersonalizeViewController () <UITextFieldDelegate, UITextViewDelegate, ARPersonalizeNetworkDelegate, ARPersonalizeContainer>
+
+@property (nonatomic, assign, readwrite) AROnboardingStage state;
+
+@property (nonatomic, strong, readwrite) UIView *searchView;
+@property (nonatomic, strong, readwrite) AROnboardingHeaderView *headerView;
+@property (nonatomic, strong, readwrite) AROnboardingNavigationItemsView *onboardingNavigationItems;
+@property (nonatomic, strong, readwrite) ARLoginFieldsView *onboardingTextFields;
+@property (nonatomic, strong) ARLoginButtonsView *onboardingButtonsView;
+@property (nonatomic, strong) ARAcceptConditionsView *acceptConditionsView;
+@property (nonatomic, strong, readwrite) AROnboardingPersonalizeTableViewController *searchResultsTable;
+@property (nonatomic, strong, readwrite) ARPriceRangeViewController *budgetTable;
+@property (nonatomic, assign, readwrite) BOOL followedAtLeastOneCategory;
+@property (nonatomic, strong) NSLayoutConstraint *navigationItemsBottomConstraint;
+@property (nonatomic, assign, readwrite) BOOL comingBack;
+
+@property (nonatomic, strong) NSLayoutConstraint *spaceHeaderToTop;
+@property (nonatomic, strong) NSLayoutConstraint *spaceFieldsToHeader;
 
 
-@interface ARPersonalizeViewController () <UIScrollViewDelegate, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate>
 
-@property (nonatomic) NSArray *genesToFollow;
-@property (nonatomic) NSArray *searchResults;
+@property (nonatomic, strong, readwrite) NSMutableArray *artistsFollowed;
+@property (nonatomic, strong, readwrite) NSMutableArray *categoriesFollowed;
 
-@property (nonatomic) AROnboardingGeneTableController *geneController;
-@property (nonatomic) AROnboardingArtistTableController *artistController;
-
-
-@property (nonatomic) UIScrollView *scrollView;
-
-//Search table view is controlled by this VC because it interacts more with the search bar
-@property (nonatomic) UITableView *artistTableView, *geneTableView, *searchTableView;
-@property (nonatomic) UIView *searchView;
-@property (nonatomic) UILabel *titleLabel;
-@property (nonatomic) AROnboardingSearchField *searchBar;
-@property (nonatomic) UILabel *followedArtistsLabel;
-@property (nonatomic) UIButton *cancelButton;
-@property (nonatomic, assign) NSInteger followedThisSession;
-
-@property (nonatomic) ARWhiteFlatButton *continueButton;
-
-@property (nonatomic) AFHTTPRequestOperation *searchRequestOperation;
+@property (nonatomic, weak) AFHTTPRequestOperation *searchRequestOperation;
 @end
 
 
 @implementation ARPersonalizeViewController
 
-- (instancetype)initWithGenes:(NSArray *)genes
+- (instancetype)initForStage:(AROnboardingStage)stage
 {
     self = [super init];
     if (self) {
-        _searchResults = [NSMutableArray array];
-        if (!genes || genes.count == 0) {
-            NSArray *fallbackGenes = @[ @"Photography", @"Bauhaus", @"Dada", @"Glitch Aesthetic", @"Computer Art", @"Op Art", @"Minimalism" ];
-            ARActionLog(@"Using fallback genes in 'Personalize'");
-            // Convert names to Gene Objects
-            _genesToFollow = [fallbackGenes map:^id(NSString *name) {
-                NSString *geneID = [[name stringByReplacingOccurrencesOfString:@" " withString:@"-"]
-                                    lowercaseString];
-                Gene *gene = [Gene modelWithJSON:@{
-                    @"name" : name,
-                    @"id" : geneID
-                }];
-                return gene;
-            }];
-        } else {
-            _genesToFollow = genes;
-        }
-
-        _artistController = [[AROnboardingArtistTableController alloc] init];
-        _geneController = [[AROnboardingGeneTableController alloc] initWithGenes:_genesToFollow];
+        _state = stage;
+        _artistsFollowed = [NSMutableArray new];
+        _categoriesFollowed = [NSMutableArray new];
     }
     return self;
 }
 
-- (CGFloat)bottomOf:(UIView *)view
+- (void)viewWillAppear:(BOOL)animated
 {
-    return CGRectGetMaxY(view.frame);
+    [super viewWillAppear:animated];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textChanged:)
+                                                 name:UITextFieldTextDidChangeNotification
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textBeganEditing:)
+                                                 name:UITextFieldTextDidBeginEditingNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(textEndedEditing:)
+                                                 name:UITextFieldTextDidEndEditingNotification
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardWillShow:)
+                                                 name:UIKeyboardWillShowNotification
+                                               object:nil];
+
+    if (self.comingBack && self.state == AROnboardingStagePersonalizeEmail) {
+        [self.onboardingTextFields.emailField becomeFirstResponder];
+    }
+
+    // We need an auto-layout render pass for the iPhone X,
+    // as the status bar safe values are only available here, instead of during viewDidLoad etc
+    [self finaliseValuesForiPadWithInterfaceOrientation:UIApplication.sharedApplication.statusBarOrientation];
 }
 
+- (BOOL)prefersStatusBarHidden
+{
+    return YES;
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidBeginEditingNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidEndEditingNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+}
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.scrollView = [[UIScrollView alloc] init];
-    self.scrollView.frame = self.view.frame;
-    self.scrollView.delaysContentTouches = NO;
-    self.scrollView.backgroundColor = [UIColor blackColor];
-    [self.view addSubview:self.scrollView];
 
-    CGSize screenSize = self.scrollView.bounds.size;
-    UILabel *headline = [[UILabel alloc] initWithFrame:CGRectMake(20, 30, screenSize.width - 40, 40)];
-    headline.font = [UIFont serifFontWithSize:24];
-    headline.text = @"What interests you?";
-    headline.textColor = [UIColor whiteColor];
-    self.titleLabel = headline;
-    [self.scrollView addSubview:headline];
-
-    UILabel *followArtists = [[UILabel alloc] initWithFrame:CGRectMake(20, 80, screenSize.width - 40, 20)];
-    followArtists.font = [UIFont sansSerifFontWithSize:14];
-    followArtists.textColor = [UIColor whiteColor];
-    followArtists.text = [@"Enter your favorite artists" uppercaseString];
-    [self.scrollView addSubview:followArtists];
-
-    CGFloat cancelButtonWidth = 70;
-    CGFloat searchLeftMargin = 20;
-    self.searchBar = [[AROnboardingSearchField alloc] initWithFrame:CGRectMake(searchLeftMargin, 105, screenSize.width - cancelButtonWidth - searchLeftMargin, 40)];
-    self.searchBar.placeholder = @"Search artists…";
-    self.searchBar.delegate = self;
-    self.searchBar.autocapitalizationType = UITextAutocapitalizationTypeWords;
-    self.searchBar.autocorrectionType = UITextAutocorrectionTypeNo;
-    self.searchBar.keyboardAppearance = UIKeyboardAppearanceDark;
-    [self.searchBar addTarget:self action:@selector(searchBarDown:) forControlEvents:UIControlEventTouchDown];
-
-    self.cancelButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    self.cancelButton.frame = CGRectMake(screenSize.width - cancelButtonWidth, self.searchBar.frame.origin.y, cancelButtonWidth, self.searchBar.bounds.size.height - 1);
-    self.cancelButton.titleLabel.font = [UIFont sansSerifFontWithSize:11];
-    self.cancelButton.backgroundColor = [UIColor blackColor];
-    [self.cancelButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    [self.cancelButton setTitle:@"CANCEL" forState:UIControlStateNormal];
-
-    [self.scrollView addSubview:self.cancelButton];
-    [self.cancelButton addTarget:self action:@selector(cancelSearch:) forControlEvents:UIControlEventTouchUpInside];
-    self.cancelButton.alpha = 0;
-
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(startedEditing:)
-                                                 name:UITextFieldTextDidBeginEditingNotification
-                                               object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(searchTextChanged:)
-                                                 name:UITextFieldTextDidChangeNotification
-                                               object:nil];
-
-    [self.scrollView addSubview:self.searchBar];
-
-    self.artistTableView = [[UITableView alloc] initWithFrame:CGRectMake(0, [self bottomOf:self.searchBar], screenSize.width, 10)];
-    self.artistTableView.dataSource = self.artistController;
-    self.artistTableView.delegate = self.artistController;
-    [self.artistController prepareTableView:self.artistTableView];
-    self.artistTableView.backgroundColor = [UIColor blackColor];
-    self.artistTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.artistTableView.scrollEnabled = NO;
-
-    @weakify(self);
-    [self.artistController setPostRemoveBlock:^{
-        @strongify(self);
-        [self updateArtistTableViewAnimated:YES];
-    }];
-
-    [self.scrollView addSubview:self.artistTableView];
-
-    self.geneTableView = [[UITableView alloc] initWithFrame:CGRectMake(0,
-                                                                       [self bottomOf:self.artistTableView], screenSize.width,
-                                                                       54 * self.genesToFollow.count + 50)];
-    self.geneTableView.dataSource = self.geneController;
-    self.geneTableView.delegate = self.geneController;
-    [self.geneController prepareTableView:self.geneTableView];
-    self.geneTableView.backgroundColor = [UIColor clearColor];
-    self.geneTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.geneTableView.scrollEnabled = NO;
-
-    [self.scrollView addSubview:self.geneTableView];
-
-    self.searchView = [[UIView alloc] initWithFrame:CGRectMake(0,
-                                                               [self bottomOf:self.searchBar],
-                                                               screenSize.width, 1000)];
-    self.searchView.backgroundColor = [UIColor blackColor];
-    [self.scrollView addSubview:self.searchView];
-    self.searchView.alpha = 0;
-
-    self.followedArtistsLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, screenSize.width - 40, 100)];
-    self.followedArtistsLabel.numberOfLines = 0;
-    self.followedArtistsLabel.font = [UIFont serifFontWithSize:16];
-    self.followedArtistsLabel.textColor = [UIColor artsyHeavyGrey];
-    [self.searchView addSubview:self.followedArtistsLabel];
-    self.followedArtistsLabel.alpha = 0;
-
-    self.searchTableView = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, screenSize.width, 1000)];
-    [self.searchView addSubview:self.searchTableView];
-    self.searchTableView.dataSource = self;
-    self.searchTableView.delegate = self;
-    self.searchTableView.backgroundColor = [UIColor blackColor];
-    self.searchTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    [self.searchTableView registerClass:[AROnboardingFollowableTableViewCell class] forCellReuseIdentifier:SearchCellId];
-
-    self.searchResults = @[];
-
-    self.scrollView.contentSize = CGSizeMake(CGRectGetWidth(self.view.bounds), CGRectGetMaxY(self.geneTableView.frame) + 44);
-    self.continueButton = [[ARWhiteFlatButton alloc] initWithFrame:CGRectMake(0, screenSize.height - 44, screenSize.width, 44)];
-    [self.continueButton addTarget:self action:@selector(continueTapped:) forControlEvents:UIControlEventTouchUpInside];
-    [self.continueButton setTitle:@"Continue" forState:UIControlStateNormal];
-    [self.view addSubview:self.continueButton];
+    // Yes I am just as confused as you are
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.01 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showViews];
+    });
 }
 
-- (void)dealloc
+- (void)showViews
 {
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidBeginEditingNotification object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:UITextFieldTextDidChangeNotification object:nil];
-}
+    self.view.backgroundColor = [UIColor whiteColor];
 
-- (void)continueTapped:(id)sender
-{
-    [self.delegate personalizeDone];
-}
+    self.onboardingNavigationItems = [[AROnboardingNavigationItemsView alloc] init];
+    [self.view addSubview:self.onboardingNavigationItems];
 
-- (void)searchToggleFollowStatusForArtist:(Artist *)artist atIndexPath:indexPath
-{
-    self.searchResults = @[];
-    self.searchBar.text = @"";
+    [self.onboardingNavigationItems constrainWidthToView:self.view predicate:@"0"];
+    [self.onboardingNavigationItems constrainHeight:@"50"];
 
-    AROnboardingFollowableTableViewCell *cell = (AROnboardingFollowableTableViewCell *)[self.searchTableView cellForRowAtIndexPath:indexPath];
-    cell.followState = !cell.followState;
+    self.navigationItemsBottomConstraint = [self.onboardingNavigationItems alignBottomEdgeWithView:self.view predicate:@"0"];
 
-    // We need to do this vs. checking if followed because
-    // the artist instance that was followed is a different object
-    // to this one
+    CGRect keyboardFrame = [(AROnboardingViewController *)self.delegate keyboardFrame];
+    if (CGRectGetHeight(keyboardFrame) > 0) {
+        self.navigationItemsBottomConstraint.constant = -keyboardFrame.size.height;
+    }
+    [self.onboardingNavigationItems alignLeadingEdgeWithView:self.view predicate:@"0"];
 
-    if ([self.artistController hasArtist:artist]) {
-        self.followedThisSession--;
-        artist.followed = NO;
-        [self.artistController removeArtist:artist];
+    [self.onboardingNavigationItems.next addTarget:self action:@selector(nextTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.onboardingNavigationItems.back addTarget:self action:@selector(backTapped:) forControlEvents:UIControlEventTouchUpInside];
 
-        [artist unfollowWithSuccess:nil failure:^(NSError *error) {
-            [self.artistController addArtist:artist];
-            [self updateFollowString];
-        }];
+    self.headerView = [[AROnboardingHeaderView alloc] init];
+    [self.view addSubview:self.headerView];
+
+    // for iPhone 5
+    if ([[UIScreen mainScreen] bounds].size.height == 568.0) {
+        self.spaceHeaderToTop = [self.headerView alignTopEdgeWithView:self.view predicate:self.useLargeLayout ? @"80" : @"20"];
+        [self.headerView constrainHeight:@"120"];
     } else {
-        self.followedThisSession++;
-        [self.artistController addArtist:artist];
-
-        [artist followWithSuccess:nil failure:^(NSError *error) {
-            [self.artistController removeArtist:artist];
-            [self updateFollowString];
-        }];
+        self.spaceHeaderToTop = [self.headerView alignTopEdgeWithView:self.view predicate:self.useLargeLayout ? @"80" : @"60"];
+        [self.headerView constrainHeight:@"160"];
     }
 
-    [self updateFollowString];
+    [self.headerView constrainWidthToView:self.view predicate:self.useLargeLayout ? @"*.6" : @"0"];
+    [self.headerView alignCenterXWithView:self.view predicate:@"0"];
 
-    if (self.followedThisSession <= 0) {
-        [self.cancelButton setTitle:@"CANCEL" forState:UIControlStateNormal];
-
-    } else if (self.followedThisSession == 1) { //if it went from zero to positive, it's 1
-        [self.cancelButton setTitle:@"DONE" forState:UIControlStateNormal];
+    switch (self.state) {
+        case AROnboardingStagePersonalizeEmail:
+            [self.onboardingNavigationItems disableNextStep];
+            [self.headerView setupHeaderViewWithTitle:@"Enter your email address" withLargeLayout:self.useLargeLayout];
+            [self.headerView addHelpText:@"Log in with your email. If you don't have an Artsy account yet, we'll get one set up for you."
+                         withLargeLayout:self.useLargeLayout];
+            [self addTextFields];
+            [self.onboardingTextFields setupForEmailWithLargeLayout:self.useLargeLayout];
+            self.onboardingTextFields.emailField.delegate = self;
+            [self.onboardingTextFields.emailField becomeFirstResponder];
+            [self addThirdPartySignInButtons];
+            break;
+        case AROnboardingStateAcceptConditions:
+            [self.onboardingNavigationItems disableNextStep];
+            [self.headerView setupHeaderViewWithTitle:@"Agree to Terms" withLargeLayout:self.useLargeLayout];
+            [self addAcceptConditionsView];
+            break;
+        case AROnboardingStagePersonalizePassword:
+            [self.onboardingNavigationItems disableNextStep];
+            [self.headerView setupHeaderViewWithTitle:@"Create a password" withLargeLayout:self.useLargeLayout];
+            [self.headerView addHelpText:@"Must be 8 characters or longer" withLargeLayout:self.useLargeLayout];
+            [self addTextFields];
+            [self.onboardingTextFields setupForPasswordWithLargeLayout:self.useLargeLayout];
+            [self.onboardingTextFields.passwordField becomeFirstResponder];
+            self.onboardingTextFields.passwordField.delegate = self;
+            [self addGoBackButton];
+            break;
+        case AROnboardingStagePersonalizeLogin:
+            [self.onboardingNavigationItems disableNextStep];
+            [self.headerView setupHeaderViewWithTitle:@"Enter your password" withLargeLayout:self.useLargeLayout];
+            [self addTextFields];
+            [self.onboardingTextFields setupForLoginWithLargeLayout:self.useLargeLayout];
+            [self.onboardingTextFields.passwordField becomeFirstResponder];
+            self.onboardingTextFields.passwordField.delegate = self;
+            [self addForgotPasswordButton];
+            break;
+        case AROnboardingStagePersonalizeName:
+            [self.onboardingNavigationItems disableNextStep];
+            [self.headerView setupHeaderViewWithTitle:@"Enter your full name" withLargeLayout:self.useLargeLayout];
+            [self.headerView addHelpText:@"Galleries and auction houses you contact will identify you by your full name" withLargeLayout:self.useLargeLayout];
+            [self addTextFields];
+            [self.onboardingTextFields setupForNameWithLargeLayout:self.useLargeLayout];
+            [self.onboardingTextFields.nameField becomeFirstResponder];
+            self.onboardingTextFields.nameField.delegate = self;
+            break;
+        case AROnboardingStagePersonalizeArtists:
+            [self addSearchTable];
+            // progress percentages are made up for now, will be calculated by steps and remaining steps later
+            [self.headerView setupHeaderViewWithTitle:@"Follow artists that most interest you" withLargeLayout:self.useLargeLayout];
+            [self.headerView showSearchBar];
+            self.searchResultsTable.headerPlaceholderText = @"TOP ARTISTS ON ARTSY";
+            self.headerView.searchField.searchField.delegate = self;
+            [self.headerView.searchField.searchField setPlaceholder:@"Search artist"];
+            [self populateTrendingArtistsAnimated:NO];
+            break;
+        case AROnboardingStagePersonalizeCategories:
+            [self addSearchTable];
+            [self.headerView setupHeaderViewWithTitle:@"Follow categories of art that most interest you" withLargeLayout:self.useLargeLayout];
+            [self.headerView showSearchBar];
+            self.headerView.searchField.searchField.delegate = self;
+            self.searchResultsTable.headerPlaceholderText = @"POPULAR CATEGORIES OF ART ON ARTSY";
+            [self.headerView.searchField.searchField setPlaceholder:@"Search medium, movement, or style"];
+            [self.onboardingNavigationItems disableNextStep]; // for the styling
+            self.onboardingNavigationItems.next.enabled = YES;
+            [self populateTrendingCategoriesAnimated:NO];
+            break;
+        case AROnboardingStagePersonalizeBudget:
+            [self addBudgetTable];
+            [self.onboardingNavigationItems disableNextStep];
+            [self.headerView setupHeaderViewWithTitle:@"Do you have a budget in mind?" withLargeLayout:self.useLargeLayout];
+            break;
+        default:
+            break;
     }
 
-    NSArray *otherCells = [[self.searchTableView visibleCells] reject:^BOOL(UITableViewCell *aCell) {
-        return cell == aCell;
-    }];
+    [self finaliseValuesForiPadWithInterfaceOrientation:UIApplication.sharedApplication.statusBarOrientation];
+}
 
-    [UIView animateWithDuration:.2 animations:^{
-        for (UIView *view in otherCells) {
-            view.alpha = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
+
+// Yes, this is deprecated, but it's the most straightforward way to change 2 values for iPad landscape
+- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+{
+    [self finaliseValuesForiPadWithInterfaceOrientation:toInterfaceOrientation];
+}
+
+#pragma clang diagnostic pop
+
+- (CGFloat)statusBarHeight
+{
+    return self.view.safeAreaInsets.top;
+}
+
+- (void)finaliseValuesForiPadWithInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
+    CGFloat statusBarHeight = [self statusBarHeight];
+    if (self.spaceHeaderToTop && self.spaceFieldsToHeader) {
+        if (UIInterfaceOrientationIsLandscape(interfaceOrientation)) {
+            self.spaceHeaderToTop.constant = statusBarHeight;
+            self.spaceFieldsToHeader.constant = -35;
+        } else {
+            self.spaceHeaderToTop.constant =  statusBarHeight + (self.useLargeLayout ? 60 : 10);
+            self.spaceFieldsToHeader.constant = self.useLargeLayout ? 145 : 5;
         }
-    }];
-
-    [UIView animateWithDuration:.2 delay:.2 options:0 animations:^{
-        self.searchTableView.alpha = 0;
-        self.followedArtistsLabel.alpha = 1;
-
-    } completion:^(BOOL finished) {
-        self.searchResults = @[];
-        [self.searchTableView reloadData];
-    }];
-}
-
-- (void)updateFollowString
-{
-    NSArray *names = [[self.artistController.artists array] map:^id(Artist *artist) {
-        return artist.name;
-    }];
-
-    if (names.count == 0) {
-        self.followedArtistsLabel.attributedText = [[NSAttributedString alloc] initWithString:@""];
-        return;
     }
 
-    NSString *text = [@"Following " stringByAppendingString:[names componentsJoinedByString:@", "]];
-    NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:text];
-    NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-    [paragraphStyle setLineSpacing:3];
-
-    [attr addAttribute:NSParagraphStyleAttributeName value:paragraphStyle range:NSMakeRange(0, [text length])];
-    self.followedArtistsLabel.attributedText = attr;
-    CGSize suggested = [self.followedArtistsLabel sizeThatFits:self.searchView.bounds.size];
-    CGRect frame = self.followedArtistsLabel.frame;
-    frame.size.height = suggested.height;
-    self.followedArtistsLabel.frame = frame;
+    // It will default to 0 in the init code, but we have to wait until the view is in the heirarchy
+    // before `self.view.safeAreaInsets.bottom` will actually return a useful value
+    if (self.view.safeAreaInsets.bottom && self.navigationItemsBottomConstraint.constant == 0) {
+        self.navigationItemsBottomConstraint.constant = -1 * self.view.safeAreaInsets.bottom;
+    }
 }
 
-- (void)updateArtistTableViewAnimated:(BOOL)animated
+- (void)addTextFields
 {
-    if ([self.searchBar isFirstResponder]) {
-        return;
+    self.onboardingTextFields = [[ARLoginFieldsView alloc] init];
+    [self.view addSubview:self.onboardingTextFields];
+
+    [self.onboardingTextFields constrainWidthToView:self.view predicate:self.useLargeLayout ? @"*.6" : @"0"];
+    [self.onboardingTextFields alignCenterXWithView:self.view predicate:@"0"];
+    self.spaceFieldsToHeader = [self.onboardingTextFields constrainTopSpaceToView:self.headerView predicate:self.useLargeLayout ? @"150" : @"5"];
+
+    // for iPhone 5
+    if ([[UIScreen mainScreen] bounds].size.height == 568.0) {
+        [self.onboardingTextFields constrainHeight:@"80"];
+    } else {
+        [self.onboardingTextFields constrainHeight:@"100"];
     }
-    CGRect aFrame = self.artistTableView.frame;
-    aFrame.size.height = (54 * self.artistController.artists.count);
+}
 
-    CGRect gFrame = self.geneTableView.frame;
-    gFrame.origin.y = CGRectGetMaxY(aFrame);
+- (void)addAcceptConditionsView
+{
+    self.acceptConditionsView = [[ARAcceptConditionsView alloc] init];
+    [self.view addSubview:self.acceptConditionsView];
 
-    [UIView animateSpringIf:animated duration:0.3 delay:0 damping:10 velocity:5:^{
-        self.artistTableView.frame = aFrame;
-        self.geneTableView.frame = gFrame;
-        self.scrollView.contentSize = CGSizeMake(CGRectGetWidth(self.view.bounds), CGRectGetMaxY(self.geneTableView.frame) + 44);
-    } completion:^(BOOL finished) {
-        [self.artistTableView reloadData];
-    }];
+    [self.acceptConditionsView constrainWidthToView:self.view predicate:@"0"];
+    [self.acceptConditionsView alignCenterXWithView:self.view predicate:@"0"];
+    [self.acceptConditionsView constrainTopSpaceToView:self.headerView.titleLabel predicate:@"0"];
+    [self.acceptConditionsView constrainHeight:@"300"];
+
+    self.acceptConditionsView.helpTextLabel.delegate = self;
+    [self.acceptConditionsView.checkboxButton addTarget:self
+                                                 action:@selector(checkboxButtonPressed:)
+                                       forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)addButtons
+{
+    self.onboardingButtonsView = [[ARLoginButtonsView alloc] init];
+    [self.view addSubview:self.onboardingButtonsView];
+
+    [self.onboardingButtonsView constrainWidthToView:self.view predicate:self.useLargeLayout ? @"*.6" : @"*.9"];
+    [self.onboardingButtonsView alignCenterXWithView:self.view predicate:@"0"];
+    [self.onboardingButtonsView constrainTopSpaceToView:self.onboardingTextFields predicate:self.useLargeLayout ? @"5" : @"20"];
+
+    if (self.useLargeLayout) {
+        [self.onboardingButtonsView.actionButton setContentHorizontalAlignment:UIControlContentHorizontalAlignmentCenter];
+    } else {
+        [self.onboardingButtonsView.actionButton setContentHorizontalAlignment:UIControlContentHorizontalAlignmentLeft];
+    }
+
+}
+
+- (void)addThirdPartySignInButtons
+{
+    [self addButtons];
+
+    if (@available(iOS 13.0, *)) {
+        [self.onboardingButtonsView setupForThirdPartyLoginsWithLargeLayout:self.useLargeLayout];
+        [self.onboardingButtonsView.appleButton addTarget:self action:@selector(appleSignInTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.onboardingButtonsView.facebookButton addTarget:self action:@selector(facebookSignInTapped:) forControlEvents:UIControlEventTouchUpInside];
+    } else {
+        [self.onboardingButtonsView setupForFacebookWithLargeLayout:self.useLargeLayout];
+        [self.onboardingButtonsView.actionButton addTarget:self action:@selector(facebookSignInTapped:) forControlEvents:UIControlEventTouchUpInside];
+    }
+}
+
+- (void)addForgotPasswordButton
+{
+    [self addButtons];
+    [self.onboardingButtonsView setupForLoginWithLargeLayout:self.useLargeLayout];
+
+    [self.onboardingButtonsView.actionButton addTarget:self
+                                                action:@selector(forgotPassword:)
+                                      forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)addGoBackButton
+{
+    [self addButtons];
+    [self.onboardingButtonsView setupForSignUpWithLargeLayout:self.useLargeLayout];
+
+    [self.onboardingButtonsView.actionButton addTarget:self
+                                                action:@selector(backTapped:)
+                                      forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (void)addSearchTable
+{
+    self.searchResultsTable = [[AROnboardingPersonalizeTableViewController alloc] init];
+    self.searchResultsTable.networkDelegate = self;
+    [self.view addSubview:self.searchResultsTable.view];
+
+    [self.searchResultsTable.view constrainWidthToView:self.view predicate:self.useLargeLayout ? @"*.6" : @"0"];
+    [self.searchResultsTable.view alignCenterXWithView:self.view predicate:@"0"];
+    [self.searchResultsTable.view constrainTopSpaceToView:self.headerView predicate:@"5"];
+    [self.searchResultsTable.view constrainBottomSpaceToView:self.onboardingNavigationItems predicate:@"0"];
+}
+
+- (void)addBudgetTable
+{
+    self.budgetTable = [[ARPriceRangeViewController alloc] init];
+    self.budgetTable.delegate = self;
+    [self.view addSubview:self.budgetTable.view];
+
+    [self.budgetTable.view constrainWidthToView:self.view predicate:self.useLargeLayout ? @"*.6" : @"0"];
+    [self.budgetTable.view alignCenterXWithView:self.view predicate:@"0"];
+
+    if (self.useLargeLayout) {
+        [self.budgetTable.view alignCenterYWithView:self.view predicate:@"0"];
+        [self.budgetTable.view constrainHeight:@"490"];
+    } else {
+        [self.budgetTable.view constrainTopSpaceToView:self.headerView predicate:@"5"];
+        [self.budgetTable.view constrainBottomSpaceToView:self.onboardingNavigationItems predicate:@"0"];
+    }
 }
 
 #pragma mark -
-#pragma mark Search bar
+#pragma mark Keyboard Accessory Animation
 
-- (void)searchBarDown:(id)sender
+- (void)updateKeyboardFrame:(CGRect)keyboardFrame
 {
-    if (self.cancelButton.alpha > 0) {
-        return;
+    if (self.onboardingNavigationItems && !(self.state == AROnboardingStagePersonalizeArtists || self.state == AROnboardingStagePersonalizeCategories)) {
+        self.navigationItemsBottomConstraint.constant = -keyboardFrame.size.height;
+    }
+}
+- (void)keyboardWillShow:(NSNotification *)notification
+{
+    if (self.state == AROnboardingStagePersonalizeEmail) {
+        CGSize keyboardSize = [[[notification userInfo] objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue].size;
+        self.navigationItemsBottomConstraint.constant = -keyboardSize.height;
+    }
+}
+
+#pragma mark -
+#pragma mark Text View Delegate
+
+- (BOOL)textView:(UITextView *)textView shouldInteractWithURL:(NSURL *)URL inRange:(NSRange)characterRange interaction:(UITextItemInteraction)interaction
+{
+    NSString *path = [[URL.absoluteString componentsSeparatedByString:@"/"] lastObject];
+    if ([path isEqualToString:@"terms"]) {
+        [self.delegate termsAndConditionsLinkTapped];
+    } else if ([path isEqualToString:@"privacy"]) {
+        [self.delegate privacyPolicyLinkTapped];
     }
 
-    CGPoint currentOffset = self.scrollView.contentOffset;
-    CGFloat off = -5;
+    return NO;
+}
 
-    [UIView animateWithDuration:.07 delay:0 usingSpringWithDamping:.8 initialSpringVelocity:2.5 options:0 animations:^{
-        self.scrollView.contentOffset = CGPointMake(currentOffset.x, currentOffset.y + off);
+#pragma mark -
+#pragma mark Text Field Delegate
 
-    } completion:^(BOOL finished) {
-        [UIView animateWithDuration:.3 delay:0 usingSpringWithDamping:.8 initialSpringVelocity:2.5 options:0 animations:^{
-            CGPoint currentOffset = self.scrollView.contentOffset;
-            self.scrollView.contentOffset = CGPointMake(currentOffset.x, currentOffset.y + 105);
-            self.cancelButton.alpha = 1;
-            [self.scrollView bringSubviewToFront:self.cancelButton];
-            self.scrollView.scrollEnabled = NO;
-            self.titleLabel.alpha = 0;
-        } completion:nil];
+- (void)textChanged:(NSNotification *)notification
+{
+
+    switch (self.state) {
+        case AROnboardingStagePersonalizeEmail:
+            [self emailTextChanged];
+            break;
+        case AROnboardingStagePersonalizePassword:
+            [self passwordTextChanged];
+            break;
+        case AROnboardingStagePersonalizeLogin:
+            [self passwordTextChanged];
+            break;
+        case AROnboardingStagePersonalizeName:
+            [self nameTextChanged];
+            break;
+        case AROnboardingStagePersonalizeArtists:
+            [self searchTextChanged];
+            break;
+        case AROnboardingStagePersonalizeCategories:
+            [self searchTextChanged];
+            break;
+        default:
+            break;
+    }
+}
+
+- (void)textBeganEditing:(NSNotification *)notification
+{
+
+    switch (self.state) {
+        case AROnboardingStagePersonalizeArtists:
+            [self searchStarted];
+            break;
+        case AROnboardingStagePersonalizeCategories:
+            [self searchStarted];
+            break;
+        default:
+            break;
+    }
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    switch (self.state) {
+        case AROnboardingStagePersonalizePassword:
+            if (![self validPassword:textField.text]) {
+                [self.onboardingTextFields enableErrorState];
+                [self.headerView enableErrorHelpText];
+                [self.onboardingNavigationItems showError:@"Try a different password"];
+                return NO;
+            } else {
+                [self nextTapped:nil];
+            }
+            break;
+        case AROnboardingStagePersonalizeEmail:
+            if (![self validEmail:textField.text]) {
+                [self.onboardingTextFields enableErrorState];
+                [self.onboardingNavigationItems showError:@"Try a valid email"];
+                return NO;
+            } else {
+                [self nextTapped:nil];
+            }
+            break;
+        case AROnboardingStagePersonalizeLogin:
+        case AROnboardingStagePersonalizeName:
+            [self nextTapped:nil];
+            break;
+        case AROnboardingStagePersonalizeArtists:
+            [self.headerView.searchField.searchField resignFirstResponder];
+            break;
+        case AROnboardingStagePersonalizeCategories:
+            [self.headerView.searchField.searchField resignFirstResponder];
+            break;
+        default:
+            break;
+    }
+
+    return YES;
+}
+
+- (void)textEndedEditing:(NSNotification *)notification
+{
+    switch (self.state) {
+        case AROnboardingStagePersonalizeArtists:
+            [self searchEnded];
+            break;
+        case AROnboardingStagePersonalizeCategories:
+            [self searchEnded];
+            break;
+        default:
+            break;
+    }
+}
+
+
+#pragma mark -
+#pragma mark Account Creation
+
+- (void)emailTextChanged
+{
+    // iOS Autocomplete includes a space after inserting the email, we need to remove it.
+    NSString *email = [self.onboardingTextFields.emailField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    self.onboardingTextFields.emailField.text = email;
+
+    if ([self validEmail:email]) {
+        [self.onboardingTextFields disableErrorState];
+        [self.onboardingNavigationItems hideError];
+        [self.onboardingNavigationItems enableNextStep];
+    } else {
+        [self.onboardingNavigationItems disableNextStep];
+    }
+}
+
+- (void)passwordTextChanged
+{
+    NSString *password = self.onboardingTextFields.passwordField.text;
+
+    if ([self validPassword:password]) {
+        [self.onboardingTextFields disableErrorState];
+        [self.headerView disableErrorHelpText];
+        [self.onboardingNavigationItems hideError];
+        [self.onboardingNavigationItems enableNextStep];
+    } else {
+        [self.onboardingNavigationItems disableNextStep];
+    }
+}
+
+- (void)nameTextChanged
+{
+    if (self.onboardingTextFields.nameField.text.length > 0) {
+        [self.onboardingNavigationItems enableNextStep];
+    }
+}
+
+- (void)checkboxButtonPressed:(id)sender
+{
+    if (self.acceptConditionsView.checkboxButton.selected) {
+        [self.onboardingNavigationItems disableNextStep];
+    } else {
+        [self.onboardingNavigationItems enableNextStep];
+        [self.onboardingTextFields disableErrorState];
+        [self.onboardingNavigationItems hideError];
+    }
+    self.acceptConditionsView.checkboxButton.selected = !self.acceptConditionsView.checkboxButton.selected;
+}
+
+- (BOOL)validEmail:(NSString *)email
+{
+    // Got this from http://regexlib.com and modified it to accept plusses in the name too (e.g. name+suffix@domain.com)
+    NSString *emailValidationPattern = @"^([a-zA-Z0-9_\\-\\.\\+]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,7})$";
+
+    NSRegularExpression *regex = [[NSRegularExpression alloc] initWithPattern:emailValidationPattern
+                                                                      options:NSRegularExpressionCaseInsensitive
+                                                                        error:nil];
+    NSUInteger emailMatch = [regex numberOfMatchesInString:email
+                                                   options:0
+                                                     range:NSMakeRange(0, [email length])];
+    if (emailMatch > 0) {
+        return YES;
+    } else {
+        return NO;
+    }
+}
+
+- (BOOL)validPassword:(NSString *)password
+{
+    // If the user is logging in, allow any non-empty password.
+    if (self.state == AROnboardingStagePersonalizeLogin) {
+        if (password.length > 0) {
+            return YES;
+        }
+    } else {
+        // Otherwise, new users signing up require passwords at least 8 chars long.
+        if (password.length >= 8) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (void)showErrorWithMessage:(NSString *)errorMessage
+{
+    // Since the error might not be due to the UI that's currently visible, let's not highlight
+    // text fields in red (since they error is likely unrelated).
+    // [self.onboardingTextFields enableErrorState];
+    [self.onboardingNavigationItems showError:errorMessage];
+}
+
+
+
+#pragma mark -
+#pragma mark Forgot Password
+
+- (void)forgotPassword:(id)sender
+{
+    UIAlertController *forgotPasswordAlert = [UIAlertController alertControllerWithTitle:@"Forgot Password"
+                                                                                 message:@"Please enter your email address and we’ll send you a reset link."
+                                                                          preferredStyle:UIAlertControllerStyleAlert];
+
+    UIAlertAction *sendEmailAction = [UIAlertAction actionWithTitle:@"Send Link"
+                                                              style:UIAlertActionStyleDefault
+                                                            handler:^(UIAlertAction * _Nonnull action) {
+                                                                NSString *email = [[forgotPasswordAlert textFields].firstObject text];
+                                                                if (![self validEmail:email]) {
+                                                                    [self passwordResetError:@"Please check your email address"];
+                                                                } else {
+                                                                    [self.delegate sendPasswordResetEmail:email sender:self];
+                                                                }
+                                                            }];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel"
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:^(UIAlertAction * _Nonnull action) {
     }];
-}
 
-- (void)cancelSearch:(id)sender
-{
-    [self.searchBar resignFirstResponder];
-    self.searchBar.text = @"";
-    [self updateArtistTableViewAnimated:NO];
-    self.scrollView.scrollEnabled = YES;
+    [forgotPasswordAlert addAction:sendEmailAction];
+    [forgotPasswordAlert addAction:cancelAction];
 
-    [UIView animateWithDuration:.35 delay:0 usingSpringWithDamping:.8 initialSpringVelocity:2.5 options:0 animations:^{
-        self.scrollView.contentOffset = CGPointZero;
-
-        self.cancelButton.alpha = 0;
-        self.searchView.alpha = 0;
-        self.titleLabel.alpha = 1;
-
-    } completion:nil];
-}
-
-- (void)startedEditing:(id)sender
-{
-    [self.cancelButton setTitle:@"CANCEL" forState:UIControlStateNormal];
-    self.followedThisSession = 0;
-    self.followedArtistsLabel.alpha = 0;
-    self.searchTableView.alpha = 0;
-
-    [UIView animateWithDuration:.3 animations:^{
-        self.searchView.alpha = 1;
+    [forgotPasswordAlert addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+        textField.text = [self.delegate userEmail];
     }];
+
+    [self presentViewController:forgotPasswordAlert animated:YES completion:nil];
 }
 
-- (void)searchTextChanged:(NSNotification *)notification
+- (void)passwordResetSent
 {
-    BOOL searchBarIsEmpty = [self.searchBar.text isEqualToString:@""];
-    if (self.searchTableView.alpha == 0) {
-        [UIView animateWithDuration:.1 animations:^{
-            self.searchTableView.alpha = 1;
-        }];
+    UIAlertController *confirmationAlert = [UIAlertController alertControllerWithTitle:@"Please Check Your Email"
+                                                                               message:@"We have sent you an email with a link to reset your password"
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"OK"
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:^(UIAlertAction * _Nonnull action) {
+                                                         }];
+    [confirmationAlert addAction:cancelAction];
+    [self presentViewController:confirmationAlert animated:YES completion:nil];
+}
 
-    } else if (searchBarIsEmpty) {
-        self.searchTableView.alpha = 0;
-    }
+- (void)passwordResetError:(NSString *)message
+{
+    UIAlertController *errorAlert = [UIAlertController alertControllerWithTitle:@"Couldn’t Reset Password"
+                                                                               message:@"There was an issue trying to reset your password. Please try again."
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"OK"
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:^(UIAlertAction * _Nonnull action) {
+                                                         }];
+    [errorAlert addAction:cancelAction];
+    [self presentViewController:errorAlert animated:YES completion:nil];
+}
 
-    if (self.searchRequestOperation) {
-        [self.searchRequestOperation cancel];
-    }
+
+#pragma mark -
+#pragma mark Search Field
+
+- (void)searchTextChanged
+{
+    BOOL searchBarIsEmpty = [self.headerView.searchField.searchField.text isEqualToString:@""];
+    self.searchResultsTable.contentDisplayMode = ARTableViewContentDisplayModeSearchResults;
+
+    [self.searchRequestOperation cancel];
 
     if (searchBarIsEmpty) {
-        self.searchResults = @[];
-        [self.searchTableView reloadData];
+        switch (self.state) {
+            case AROnboardingStagePersonalizeArtists: {
+                [self populateTrendingArtistsAnimated:NO];
+            } break;
+            case AROnboardingStagePersonalizeCategories: {
+                [self populateTrendingCategoriesAnimated:NO];
+            } break;
+            default:
+                break;
+        }
         return;
     }
 
-    self.searchRequestOperation = [ArtsyAPI artistSearchWithQuery:self.searchBar.text success:^(NSArray *results) {
-        self.searchResults = results;
-        [self.searchTableView reloadData];
+    switch (self.state) {
+        case AROnboardingStagePersonalizeArtists: {
+            self.searchRequestOperation = [ArtsyAPI artistSearchWithQuery:self.headerView.searchField.searchField.text excluding:self.artistsFollowed success:^(NSArray *results) {
+                [self.searchResultsTable updateTableContentsFor:results replaceContents:ARSearchResultsReplaceAll animated:NO];
+            } failure:^(NSError *error) {
+                [self reportError:error];
+            }];
+        } break;
+        case AROnboardingStagePersonalizeCategories: {
+            self.searchRequestOperation = [ArtsyAPI geneSearchWithQuery:self.headerView.searchField.searchField.text excluding:self.categoriesFollowed success:^(NSArray *results) {
+                [self.searchResultsTable updateTableContentsFor:results replaceContents:ARSearchResultsReplaceAll animated:NO];
+            } failure:^(NSError *error) {
+                [self reportError:error];
+            }];
+        } break;
+        default:
+            break;
+    }
+}
 
-    } failure:^(NSError *error) {
-        if (error.code != NSURLErrorCancelled) {
-            [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-            ARErrorLog(@"Personalize search network error %@", error.localizedDescription);
-        }
-    }];
+- (void)searchStarted
+{
+    [self.headerView searchStarted];
+}
+
+- (void)searchEnded
+{
+    [self.headerView searchEnded];
 }
 
 #pragma mark -
-#pragma mark Table view delegate
+#pragma mark Network
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+- (void)populateTrendingArtistsAnimated:(BOOL)animated
 {
-    return 1;
+    [self.searchRequestOperation cancel];
+
+    [self.searchResultsTable showLoadingSpinner];
+
+    self.searchResultsTable.contentDisplayMode = ARTableViewContentDisplayModePlaceholder;
+
+    void (^updateArtistsTable)(NSArray*) = ^(NSArray *artists) {
+        [self.searchResultsTable removeLoadingSpinner];
+        [self.searchResultsTable updateTableContentsFor:artists
+                                        replaceContents:ARSearchResultsReplaceAll
+                                               animated:animated];
+    };
+
+    self.searchRequestOperation = [ArtsyAPI getPopularArtistsWithSuccess:^(NSArray *artists) {
+        if (artists.count == 0) {
+            self.searchRequestOperation = [ArtsyAPI getPopularArtistsFallbackWithSuccess:updateArtistsTable failure:^(NSError *error) {
+                [self reportError:error];
+            }];
+        } else {
+            updateArtistsTable(artists);
+        }
+
+    } failure:^(NSError *error) {
+        [self reportError:error];
+    }];
 }
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+- (void)populateTrendingCategoriesAnimated:(BOOL)animated
 {
-    return self.searchResults.count;
+    [self.searchRequestOperation cancel];
+    [self.searchResultsTable showLoadingSpinner];
+
+    self.searchResultsTable.contentDisplayMode = ARTableViewContentDisplayModePlaceholder;
+
+
+    self.searchRequestOperation = [ArtsyAPI getPopularGenesWithSuccess:^(NSArray *genes) {
+        [self.searchResultsTable updateTableContentsFor:genes
+                                        replaceContents:ARSearchResultsReplaceAll
+                                               animated:animated];
+    } failure:^(NSError *error) {
+        [self reportError:error];
+    }];
 }
 
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+- (void)artistFollowed:(Artist *)artist
 {
-    return 54;
+    if (self.searchResultsTable.contentDisplayMode == ARTableViewContentDisplayModeSearchResults) {
+        self.headerView.searchField.searchField.text = @"";
+        [self.headerView.searchField endEditing:YES];
+        [self.headerView.searchField.searchField resignFirstResponder];
+        self.searchResultsTable.contentDisplayMode = ARTableViewContentDisplayModeRelatedResults;
+        self.searchRequestOperation = [ArtsyAPI getRelatedArtistsForArtist:artist excluding:self.artistsFollowed success:^(NSArray *artists) {
+            if (artists.count > 0) {
+                [self.searchResultsTable updateTableContentsFor:artists
+                                                replaceContents:ARSearchResultsReplaceAll
+                                                       animated:YES];
+            } else {
+                // show default list
+                [self populateTrendingArtistsAnimated:YES];
+            }
+        } failure:^(NSError *error) {
+            [self reportError:error];
+        }];
+
+    } else {
+        // exclude currently displayed artists as well
+        NSArray *toExclude = [self.searchResultsTable.displayedResults arrayByAddingObjectsFromArray:self.artistsFollowed];
+        self.searchRequestOperation = [ArtsyAPI getRelatedArtistForArtist:artist excluding:toExclude success:^(NSArray *relatedArtist) {
+            [self.searchResultsTable updateTableContentsFor:relatedArtist
+                                            replaceContents:ARSearchResultsReplaceSingle
+                                                   animated:NO];
+        } failure:^(NSError *error) {
+            [self reportError:error];
+        }];
+    }
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+- (void)categoryFollowed:(Gene *)category
 {
-    AROnboardingFollowableTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:SearchCellId];
-    Artist *artist = self.searchResults[indexPath.row];
-    cell.textLabel.text = artist.name;
-    cell.followState = [self.artistController hasArtist:artist];
-    return cell;
+    self.followedAtLeastOneCategory = YES;
+    [self allowUserToContinue];
+
+    if (self.searchResultsTable.contentDisplayMode == ARTableViewContentDisplayModeSearchResults) {
+        self.headerView.searchField.searchField.text = @"";
+        [self.headerView.searchField endEditing:YES];
+        [self.headerView.searchField.searchField resignFirstResponder];
+        self.searchResultsTable.contentDisplayMode = ARTableViewContentDisplayModeRelatedResults;
+        self.searchRequestOperation = [ArtsyAPI getRelatedGenesForGene:category excluding:self.categoriesFollowed success:^(NSArray *genes) {
+            if (genes.count > 0) {
+                [self.searchResultsTable updateTableContentsFor:genes
+                                                replaceContents:ARSearchResultsReplaceAll
+                                                       animated:YES];
+            } else {
+                // show default list
+                [self populateTrendingCategoriesAnimated:YES];
+            }
+
+        } failure:^(NSError *error) {
+            [self reportError:error];
+        }];
+
+    } else {
+        // exclude currently displayed artists as well
+        NSArray *toExclude = [self.searchResultsTable.displayedResults arrayByAddingObjectsFromArray:self.categoriesFollowed];
+        self.searchRequestOperation = [ArtsyAPI getRelatedGeneForGene:category excluding:toExclude success:^(NSArray *relatedGene) {
+            [self.searchResultsTable updateTableContentsFor:relatedGene
+                                            replaceContents:ARSearchResultsReplaceSingle
+                                                   animated:NO];
+        } failure:^(NSError *error) {
+            [self reportError:error];
+        }];
+    }
 }
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+- (void)budgetSelected
 {
-    [self searchToggleFollowStatusForArtist:self.searchResults[indexPath.row] atIndexPath:indexPath];
+    [self allowUserToContinue];
+}
+
+- (void)allowUserToContinue
+{
+    [self.onboardingNavigationItems enableNextStep];
+    [self.onboardingNavigationItems hideWarning];
+}
+
+- (void)reportError:(NSError *)error
+{
+    [self.searchResultsTable removeLoadingSpinner];
+
+    if (error.code != NSURLErrorCancelled) {
+        [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+        ARErrorLog(@"Personalize search network error %@", error.localizedDescription);
+    }
+}
+
+#pragma mark -
+#pragma mark Onboarding Delegate
+
+- (void)nextTapped:(id)sender
+{
+    switch (self.state) {
+        case AROnboardingStagePersonalizeEmail:
+            [self.delegate personalizeEmailDone:self.onboardingTextFields.emailField.text];
+            break;
+        case AROnboardingStagePersonalizePassword:
+            [self.delegate personalizePasswordDone:self.onboardingTextFields.passwordField.text];
+            break;
+        case AROnboardingStagePersonalizeLogin:
+            [self.onboardingNavigationItems showSpinner];
+            [self.delegate personalizeLoginWithPasswordDone:self.onboardingTextFields.passwordField.text];
+            break;
+        case AROnboardingStagePersonalizeName:
+            [self.delegate personalizeNameDone:self.onboardingTextFields.nameField.text];
+            break;
+        case AROnboardingStateAcceptConditions:
+            [self.onboardingNavigationItems showSpinner];
+            [self.delegate personalizeAcceptConditionsDone];
+            break;
+        case AROnboardingStagePersonalizeArtists:
+            [self.delegate personalizeArtistsDone];
+            break;
+        case AROnboardingStagePersonalizeCategories:
+            if (self.followedAtLeastOneCategory) {
+                [self.delegate personalizeCategoriesDone];
+            } else {
+                [self.onboardingNavigationItems showWarning:@"Follow one or more categories"];
+            }
+            break;
+        case AROnboardingStagePersonalizeBudget:
+            if (self.budgetTable.rangeValue) {
+                [self.delegate setPriceRangeDone:[self.budgetTable.rangeValue integerValue]];
+                [self.delegate personalizeBudgetDone];
+            } else {
+                [self.onboardingNavigationItems showWarning:@"Select a budget"];
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+- (void)backTapped:(id)sender
+{
+    self.comingBack = YES;
+    [self.delegate backTapped];
+}
+
+- (void)facebookSignInTapped:(id)sender
+{
+    self.comingBack = YES;
+    [self.delegate personalizeFacebookSignInTapped];
+}
+
+- (void)appleSignInTapped:(id)sender
+{
+    self.comingBack = YES;
+    [self.delegate personalizeAppleSignInTapped];
+}
+
+- (void)followableItemClicked:(id<ARFollowable>)item
+{
+    [self.delegate followableItemFollowed:item];
+
+    [self.searchRequestOperation cancel];
+
+
+    switch (self.state) {
+        case AROnboardingStagePersonalizeArtists: {
+            [self.artistsFollowed addObject:item];
+            [self artistFollowed:(Artist *)item];
+            break;
+        }
+
+        case AROnboardingStagePersonalizeCategories: {
+            [self.categoriesFollowed addObject:item];
+            [self categoryFollowed:(Gene *)item];
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 @end

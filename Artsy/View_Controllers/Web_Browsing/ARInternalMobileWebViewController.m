@@ -1,13 +1,18 @@
+#import "ARAppConstants.h"
+#import "ARLogger.h"
 #import "ARInternalMobileWebViewController.h"
 #import "UIViewController+FullScreenLoading.h"
 #import "ARRouter.h"
 #import "ARInternalShareValidator.h"
 #import "ARAppDelegate.h"
+#import "ARSwitchBoard+Eigen.h"
+#import "ARTopMenuViewController.h"
+#import "UIViewController+TopMenuViewController.h"
+#import "AROptions.h"
 
 static void *ARProgressContext = &ARProgressContext;
 
-
-@interface ARInternalMobileWebViewController () <UIAlertViewDelegate, WKNavigationDelegate>
+@interface ARInternalMobileWebViewController () <WKNavigationDelegate>
 @property (nonatomic, assign) BOOL loaded;
 @property (nonatomic, strong) ARInternalShareValidator *shareValidator;
 @end
@@ -73,6 +78,18 @@ static void *ARProgressContext = &ARProgressContext;
 
     // KVO on progress for when we can show the page
     [self.webView addObserver:self forKeyPath:@"estimatedProgress" options:NSKeyValueObservingOptionNew & NSKeyValueObservingOptionOld context:ARProgressContext];
+
+    if ([AROptions boolForOption:AROptionsShowMartsyOnScreen]) {
+        [self displayDebugMartsyIndicator];
+    }
+}
+
+- (void)displayDebugMartsyIndicator {
+    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(self.view.frame.size.width - 25, 30, 10, 10)]; // nice and oldschool
+    view.layer.cornerRadius = 5;
+    view.layer.masksToBounds = YES;
+    view.backgroundColor = [UIColor redColor];
+    [self.view insertSubview:view aboveSubview:self.webView];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -116,7 +133,7 @@ static void *ARProgressContext = &ARProgressContext;
 {
     /// If we do this initially there's a chance of seeing a black screen
     /// instead of our default white
-    self.webView.scrollView.backgroundColor = [UIColor blackColor];
+    self.webView.scrollView.backgroundColor = [UIColor whiteColor];
 
     self.loaded = YES;
 
@@ -136,19 +153,6 @@ static void *ARProgressContext = &ARProgressContext;
     // strictly classed as a WKNavigationTypeLinkActivated
     // as the user may not have _directly_ loaded it
 
-    BOOL urlIsLoginOrSignUp = [URL.path isEqual:@"/log_in"] || [URL.path isEqual:@"/sign_up"];
-    if ([ARRouter isInternalURL:URL] && (urlIsLoginOrSignUp)) {
-        if ([User isTrialUser]) {
-            [ARTrialController presentTrialWithContext:ARTrialContextNotTrial success:^(BOOL newUser) {
-                [self userDidSignUp];
-            }];
-        }
-        
-        ARActionLog(@"Martsy URL: Denied - %@ - %@", URL, @(navigationAction.navigationType));
-        return WKNavigationActionPolicyCancel;
-    }
-
-
     if (navigationAction.navigationType == WKNavigationTypeLinkActivated) {
         if ([self.shareValidator isSocialSharingURL:URL]) {
             ARWindow *window = ARAppDelegate.sharedInstance.window;
@@ -156,30 +160,43 @@ static void *ARProgressContext = &ARProgressContext;
             CGRect position = (CGRect){.origin = lastTouchPointInView, .size = CGSizeZero};
             [self.shareValidator shareURL:URL inView:self.view frame:position];
 
-            ARActionLog(@"Martsy URL: Denied - %@ - %@", URL, @(navigationAction.navigationType));
+            ARActionLog(@"Artsy URL: Denied - %@ - %@", URL, @(navigationAction.navigationType));
             return WKNavigationActionPolicyCancel;
 
         } else {
             UIViewController *viewController = [ARSwitchBoard.sharedInstance loadURL:URL fair:self.fair];
-            if (viewController && ![self.navigationController.viewControllers containsObject:viewController]) {
-                [self.navigationController pushViewController:viewController animated:YES];
+
+            if (viewController) {
+                if ([viewController isKindOfClass:[UINavigationController class]]) {
+                    // Navigation controllers can't be pushed onto regular navigation controllers, only the top menu VC.
+                    [self.ar_TopMenuViewController pushViewController:viewController animated:ARPerformWorkAsynchronously];
+                } else if (viewController.navigationController) {
+                    // viewController already has a navigation controller set on it, which indicates it's a special case
+                    // where it's already in a navigation stack somewhere. Let's dismiss ourselves (if applicable) and then
+                    // show the VC through the normal ARTopMenuViewController flow, which handles all special cases.
+
+                    if (self.presentingViewController) {
+                        [self.presentingViewController dismissViewControllerAnimated:ARPerformWorkAsynchronously completion:^{
+                            [[ARTopMenuViewController sharedController] pushViewController:viewController animated:ARPerformWorkAsynchronously];
+                        }];
+                    } else {
+                        [self.ar_TopMenuViewController pushViewController:viewController animated:ARPerformWorkAsynchronously];
+                    }
+                } else {
+                    [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
+                }
             }
 
-            ARActionLog(@"Martsy URL: Denied - %@ - %@", URL, @(navigationAction.navigationType));
+            ARActionLog(@"Artsy URL: Denied - %@ - %@", URL, @(navigationAction.navigationType));
             return WKNavigationActionPolicyCancel;
         }
     }
 
-    ARActionLog(@"Martsy URL: Allowed - %@ - %@", URL, @(navigationAction.navigationType));
+    ARActionLog(@"Artsy URL: Allowed - %@ - %@", URL, @(navigationAction.navigationType));
     return WKNavigationActionPolicyAllow;
 }
 
 // A full reload, not just a webView.reload, which only refreshes the view without re-requesting data.
-
-- (void)userDidSignUp
-{
-    [self.webView loadRequest:[self requestWithURL:self.webView.URL]];
-}
 
 - (NSURLRequest *)requestWithURL:(NSURL *)URL
 {

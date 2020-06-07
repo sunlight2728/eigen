@@ -1,5 +1,7 @@
 #import "NSDate+DateRange.h"
 
+#import "ARSystemTime.h"
+
 static NSDateFormatter *ARMonthFormatter;
 
 
@@ -23,7 +25,6 @@ static NSDateFormatter *ARMonthFormatter;
     NSInteger desiredComponents = (NSCalendarUnitDay | NSCalendarUnitMonth | NSCalendarUnitYear);
     NSDateComponents *startsComponents = [gregorian components:desiredComponents fromDate:self];
     NSDateComponents *endsComponents = [gregorian components:desiredComponents fromDate:endDate];
-
 
     NSInteger thisYear = [gregorian components:NSCalendarUnitYear fromDate:[ARSystemTime date]].year;
     BOOL shouldShowYear = endsComponents.year != thisYear;

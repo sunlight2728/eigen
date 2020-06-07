@@ -1,5 +1,53 @@
+#import "Artwork.h"
+
+#import "Artist.h"
+#import "ArtsyAPI+Artworks.h"
+#import "ArtsyAPI+Following.h"
+#import "ArtsyAPI+RelatedModels.h"
+#import "ArtsyAPI+Sales.h"
+#import "ArtsyAPI+Shows.h"
+#import "ARDefaults.h"
 #import "ARValueTransformer.h"
 #import "ARSpotlight.h"
+#import "Fair.h"
+#import "Partner.h"
+#import "User.h"
+#import "ARDispatchManager.h"
+#import "ARLogger.h"
+#import "ARStandardDateFormatter.h"
+
+#import "ARMacros.h"
+#import "MTLModel+JSON.h"
+
+#import <ReactiveObjC/ReactiveObjC.h>
+#import <ObjectiveSugar/ObjectiveSugar.h>
+#import <AFNetworking/AFNetworking.h>
+
+// We have to support two different shaped pieces of data
+// for the same fields, so these properties are used in
+// JSONKeyPathsByPropertyKey to get both fields
+// then a method switches between them depending on the data
+// weird huh?
+@interface Artwork()
+@property (nonatomic, strong) NSNumber *gravSold;
+@property (nonatomic, strong) NSNumber *mpSold;
+
+@property (nonatomic, strong) NSNumber *gravIsPriceHidden;
+@property (nonatomic, strong) NSNumber *mpIsPriceHidden;
+
+@property (nonatomic, strong) NSNumber *gravIsAcquirable;
+@property (nonatomic, strong) NSNumber *mpIsAcquirable;
+
+@property (nonatomic, strong) NSNumber *gravIsInquireable;
+@property (nonatomic, strong) NSNumber *mpIsInquirable;
+
+@property (nonatomic, strong) NSNumber *gravIsOfferable;
+@property (nonatomic, strong) NSNumber *mpIsOfferable;
+
+@property (nonatomic, strong) NSString *gravAttributionClass;
+@property (nonatomic, strong) NSString *mpAttributionClass;
+
+@end
 
 @implementation Artwork {
     // If we give these as properties they can cause
@@ -12,6 +60,7 @@
     KSDeferred *_partnerShowDeferred;
     enum ARHeartStatus _heartStatus;
     Fair *_fair;
+
 }
 
 - (instancetype)initWithArtworkID:(NSString *)artworkID
@@ -30,23 +79,44 @@
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(Artwork.new, artworkID) : @"id",
-        @keypath(Artwork.new, auctionResultCount) : @"comparables_count",
-        @keypath(Artwork.new, canShareImage) : @"can_share_image",
-        @keypath(Artwork.new, collectingInstitution) : @"collecting_institution",
-        @keypath(Artwork.new, defaultImage) : @"images",
-        @keypath(Artwork.new, additionalInfo) : @"additional_information",
-        @keypath(Artwork.new, dimensionsCM) : @"dimensions.cm",
-        @keypath(Artwork.new, dimensionsInches) : @"dimensions.in",
-        @keypath(Artwork.new, displayTitle) : @"display",
-        @keypath(Artwork.new, editionSets) : @"edition_sets",
-        @keypath(Artwork.new, exhibitionHistory) : @"exhibition_history",
-        @keypath(Artwork.new, forSale) : @"forsale",
-        @keypath(Artwork.new, imageRights) : @"image_rights",
-        @keypath(Artwork.new, published) : @"published",
-        @keypath(Artwork.new, saleMessage) : @"sale_message",
-        @keypath(Artwork.new, sold) : @"sold",
-        @keypath(Artwork.new, isPriceHidden) : @"price_hidden"
+        ar_keypath(Artwork.new, artworkID) : @"id",
+        ar_keypath(Artwork.new, artworkUUID) : @"_id",
+        ar_keypath(Artwork.new, canShareImage) : @"can_share_image",
+        ar_keypath(Artwork.new, collectingInstitution) : @"collecting_institution",
+        ar_keypath(Artwork.new, defaultImage) : @"images",
+        ar_keypath(Artwork.new, additionalInfo) : @"additional_information",
+        ar_keypath(Artwork.new, dimensionsCM) : @"dimensions.cm",
+        ar_keypath(Artwork.new, dimensionsInches) : @"dimensions.in",
+        ar_keypath(Artwork.new, mpAttributionClass) : @"mp_attribution_class.name",
+        ar_keypath(Artwork.new, gravAttributionClass) : @"attribution_class",
+        ar_keypath(Artwork.new, saleArtwork) : @"sale_artwork",
+        
+        ar_keypath(Artwork.new, editionSets) : @"edition_sets",
+        ar_keypath(Artwork.new, editionOf) : @"edition_of",
+        ar_keypath(Artwork.new, exhibitionHistory) : @"exhibition_history",
+        ar_keypath(Artwork.new, shippingInfo) : @"shippingInfo",
+        ar_keypath(Artwork.new, title) : @"title",
+        ar_keypath(Artwork.new, imageRights) : @"image_rights",
+        ar_keypath(Artwork.new, published) : @"published",
+        ar_keypath(Artwork.new, saleMessage) : @"sale_message",
+        ar_keypath(Artwork.new, slug) : @"id",
+        ar_keypath(Artwork.new, publishedAt) : @"published_at",
+
+        // TODO: Maybe never do though
+        // the artwork query can alias basck to the grav artworks
+
+        ar_keypath(Artwork.new, gravSold) : @"sold",
+        ar_keypath(Artwork.new, gravIsAcquirable) : @"acquireable",
+        ar_keypath(Artwork.new, gravIsInquireable) : @"inquireable",
+        ar_keypath(Artwork.new, gravIsOfferable) : @"offerable",
+        ar_keypath(Artwork.new, gravIsPriceHidden) : @"price_hidden",
+        
+        ar_keypath(Artwork.new, mpSold) : @"is_sold",
+        ar_keypath(Artwork.new, isInAuction) : @"is_in_auction",
+        ar_keypath(Artwork.new, mpIsAcquirable) : @"is_acquireable",
+        ar_keypath(Artwork.new, mpIsInquirable) : @"is_inquireable",
+        ar_keypath(Artwork.new, mpIsOfferable) : @"is_offerable",
+        ar_keypath(Artwork.new, mpIsPriceHidden) : @"is_price_hidden",
     };
 }
 
@@ -78,6 +148,11 @@
     return [MTLValueTransformer mtl_JSONDictionaryTransformerWithModelClass:[Partner class]];
 }
 
++ (NSValueTransformer *)saleArtworkJSONTransformer
+{
+    return [MTLValueTransformer mtl_JSONDictionaryTransformerWithModelClass:[SaleArtwork class]];
+}
+
 + (NSValueTransformer *)defaultImageJSONTransformer
 {
     return [MTLValueTransformer reversibleTransformerWithForwardBlock:^Image *(NSArray *items) {
@@ -91,25 +166,6 @@
         }];
 }
 
-+ (NSValueTransformer *)acquireableJSONTransformer
-{
-    return [NSValueTransformer valueTransformerForName:MTLBooleanValueTransformerName];
-}
-
-+ (NSValueTransformer *)inquireableJSONTransformer
-{
-    return [NSValueTransformer valueTransformerForName:MTLBooleanValueTransformerName];
-}
-
-+ (NSValueTransformer *)forSaleJSONTransformer
-{
-    return [NSValueTransformer valueTransformerForName:MTLBooleanValueTransformerName];
-}
-
-+ (NSValueTransformer *)soldJSONTransformer
-{
-    return [NSValueTransformer valueTransformerForName:MTLBooleanValueTransformerName];
-}
 
 + (NSValueTransformer *)provenanceJSONTransformer
 {
@@ -134,6 +190,11 @@
 + (NSValueTransformer *)signatureJSONTransformer
 {
     return [ARValueTransformer whitespaceTrimmingTransformer];
+}
+
++ (NSValueTransformer *)publishedAtJSONTransformer
+{
+    return [ARStandardDateFormatter sharedFormatter].stringTransformer;
 }
 
 + (NSValueTransformer *)availabilityJSONTransformer
@@ -192,14 +253,6 @@
                                           }];
 }
 
-- (AFHTTPRequestOperation *)getRelatedAuctionResults:(void (^)(NSArray *auctionResults))success
-{
-    return [ArtsyAPI getAuctionComparablesForArtwork:self success:success
-                                             failure:^(NSError *error) {
-            success(@[]);
-                                             }];
-}
-
 - (AFHTTPRequestOperation *)getRelatedPosts:(void (^)(NSArray *posts))success
 {
     return [ArtsyAPI getRelatedPostsForArtwork:self success:success
@@ -214,6 +267,43 @@
                                   failure:^(NSError *error) {
             success(@[]);
                                   }];
+}
+
+// See the comments up in the Artwork category extension at the top
+
+- (NSNumber *)sold
+{
+    return self.gravSold.boolValue ? self.gravSold : self.mpSold;
+}
+
+- (NSNumber *)isPriceHidden
+{
+    return self.gravIsPriceHidden.boolValue ? self.gravIsPriceHidden : self.mpIsPriceHidden;
+}
+
+- (NSNumber *)isInquireable
+{
+    return self.gravIsInquireable.boolValue ? self.gravIsInquireable : self.mpIsInquirable;
+}
+
+- (NSNumber *)isAcquireable
+{
+    return self.gravIsAcquirable.boolValue ? self.gravIsAcquirable : self.mpIsAcquirable;
+}
+
+- (BOOL)isBuyNowable
+{
+    return self.isAcquireable && !self.hasMultipleEditions;
+}
+
+- (NSNumber *)isOfferable
+{
+    return self.gravIsOfferable.boolValue ? self.gravIsOfferable : self.mpIsOfferable;
+}
+
+- (NSString *)attributionClass
+{
+    return self.gravAttributionClass ?: self.mpAttributionClass;
 }
 
 - (BOOL)hasWidth
@@ -258,15 +348,15 @@
 
 - (void)updateArtwork
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
     __weak KSDeferred *deferred = _artworkUpdateDeferred;
 
     ar_dispatch_async(^{
         [ArtsyAPI getArtworkInfo:self.artworkID success:^(id artwork) {
             ar_dispatch_main_queue(^{
-                @strongify(self);
-                [self mergeValuesForKeysFromModel:artwork];
-                [deferred resolveWithValue:self];
+                __strong typeof (wself) sself = wself;
+                [sself mergeValuesForKeysFromModel:artwork];
+                [deferred resolveWithValue:sself];
             });
         } failure:^(NSError *error) {
             ar_dispatch_main_queue(^{
@@ -281,9 +371,9 @@
     return [self.provenance length] || [self.exhibitionHistory length] || [self.signature length] || [self.additionalInfo length] || [self.literature length];
 }
 
-- (KSPromise *)onArtworkUpdate:(void (^)(void))success failure:(void (^)(NSError *error))failure
+- (KSPromise *)onArtworkUpdate:(nullable void (^)(void))success failure:(nullable void (^)(NSError *error))failure
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
 
     if (!_artworkUpdateDeferred) {
         _artworkUpdateDeferred = [KSDeferred defer];
@@ -296,8 +386,8 @@
     } error:^id(NSError *error) {
         if (failure) { failure(error); }
 
-        @strongify(self);
-        ARErrorLog(@"Failed fetching full JSON for artwork %@. Error: %@", self.artworkID, error.localizedDescription);
+        __strong typeof (wself) sself = wself;
+        ARErrorLog(@"Failed fetching full JSON for artwork %@. Error: %@", sself.artworkID, error.localizedDescription);
         return error;
     }];
 }
@@ -317,8 +407,8 @@
 
 - (void)updateSaleArtwork
 {
-    @weakify(self);
-
+    __weak typeof(self) wself = self;
+    NSString *artworkID = self.artworkID;
     KSDeferred *deferred = [self deferredSaleArtworkUpdate];
 
     [ArtsyAPI getSalesWithArtwork:self.artworkID success:^(NSArray *sales) {
@@ -333,14 +423,13 @@
         }
 
         if (auction) {
-            @strongify(self);
-            [ArtsyAPI getAuctionArtworkWithSale:auction.saleID artwork:self.artworkID success:^(SaleArtwork *saleArtwork) {
+            __strong typeof (wself) sself = wself;
+            [ArtsyAPI getAuctionArtworkWithSale:auction.saleID artwork:sself.artworkID success:^(SaleArtwork *saleArtwork) {
                 saleArtwork.auction = auction;
                 [deferred resolveWithValue:saleArtwork];
 
             } failure:^(NSError *error) {
-                @strongify(self);
-                ARErrorLog(@"Error fetching auction details for artwork %@: %@", self.artworkID, error.localizedDescription);
+                ARErrorLog(@"Error fetching auction details for artwork %@: %@", artworkID, error.localizedDescription);
                 [deferred rejectWithError:error];
             }];
         } else {
@@ -348,20 +437,19 @@
         }
 
     } failure:^(NSError *error) {
-        @strongify(self);
         [deferred rejectWithError:error];
-        ARErrorLog(@"Error fetching sales for artwork %@: %@", self.artworkID, error.localizedDescription);
+        ARErrorLog(@"Error fetching sales for artwork %@: %@", artworkID, error.localizedDescription);
     }];
 }
 
-- (KSPromise *)onSaleArtworkUpdate:(void (^)(SaleArtwork *saleArtwork))success
-                           failure:(void (^)(NSError *error))failure
+- (KSPromise *)onSaleArtworkUpdate:(nullable void (^)(SaleArtwork *saleArtwork))success
+                           failure:(nullable void (^)(NSError *error))failure
 {
     return [self onSaleArtworkUpdate:success failure:failure allowCached:YES];
 }
 
-- (KSPromise *)onSaleArtworkUpdate:(void (^)(SaleArtwork *saleArtwork))success
-                           failure:(void (^)(NSError *error))failure
+- (KSPromise *)onSaleArtworkUpdate:(nullable void (^)(SaleArtwork *saleArtwork))success
+                           failure:(nullable void (^)(NSError *error))failure
                        allowCached:(BOOL)allowCached;
 {
     KSDeferred *deferred = [self deferredSaleArtworkUpdate];
@@ -395,23 +483,23 @@
 
 - (void)updateFair
 {
-    @weakify(self);
-
+    __weak typeof(self) wself = self;
+    NSString *artworkID = self.artworkID;
     KSDeferred *deferred = [self deferredFairUpdate];
+
     [ArtsyAPI getFairsForArtwork:self success:^(NSArray *fairs) {
-        @strongify(self);
+        __strong typeof (wself) sself = wself;
         // we're not checking for count > 0 cause we wanna fulfill with nil if no fairs
         Fair *fair = [fairs firstObject];
-        self.fair = fair;
+        sself.fair = fair;
         [deferred resolveWithValue:fair];
     } failure:^(NSError *error) {
-        @strongify(self);
         [deferred rejectWithError:error];
-        ARErrorLog(@"Couldn't get fairs for artwork %@. Error: %@", self.artworkID, error.localizedDescription);
+        ARErrorLog(@"Couldn't get fairs for artwork %@. Error: %@", artworkID, error.localizedDescription);
     }];
 }
 
-- (KSPromise *)onFairUpdate:(void (^)(Fair *))success failure:(void (^)(NSError *))failure
+- (KSPromise *)onFairUpdate:(nullable void (^)(Fair *))success failure:(nullable void (^)(NSError *))failure
 {
     KSDeferred *deferred = [self deferredFairUpdate];
     return [deferred.promise then:^(id value) {
@@ -436,7 +524,7 @@
     return _partnerShowDeferred;
 }
 
-- (KSPromise *)onPartnerShowUpdate:(void (^)(PartnerShow *show))success failure:(void (^)(NSError *error))failure;
+- (KSPromise *)onPartnerShowUpdate:(nullable void (^)(PartnerShow *show))success failure:(nullable void (^)(NSError *error))failure;
 {
     KSDeferred *deferred = self.deferredPartnerShowUpdate;
     return [deferred.promise then:^(PartnerShow *show) {
@@ -450,28 +538,27 @@
 
 - (void)updatePartnerShow;
 {
-    @weakify(self);
+    NSString *artworkID = self.artworkID;
 
     KSDeferred *deferred = [self deferredPartnerShowUpdate];
-    [ArtsyAPI getShowsForArtworkID:self.artworkID inFairID:nil success:^(NSArray *shows) {
+    [ArtsyAPI getShowsForArtworkID:artworkID inFairID:nil success:^(NSArray *shows) {
         // we're not checking for count > 0 cause we wanna fulfill with nil if no shows
         PartnerShow *show = [shows firstObject];
         [deferred resolveWithValue:show];
     } failure:^(NSError *error) {
-        @strongify(self);
         [deferred rejectWithError:error];
-        ARErrorLog(@"Couldn't get shows for artwork %@. Error: %@", self.artworkID, error.localizedDescription);
+        ARErrorLog(@"Couldn't get shows for artwork %@. Error: %@", artworkID, error.localizedDescription);
     }];
 }
 
-- (void)setFollowState:(BOOL)state success:(void (^)(id))success failure:(void (^)(NSError *))failure
+- (void)setFollowState:(BOOL)state success:(nullable void (^)(id))success failure:(nullable void (^)(NSError *))failure
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
     [ArtsyAPI setFavoriteStatus:state forArtwork:self success:^(id response) {
-        @strongify(self);
+        __strong typeof (wself) sself = wself;
         if (!self) { return; }
 
-        self->_heartStatus = state? ARHeartStatusYes : ARHeartStatusNo;
+        sself->_heartStatus = state? ARHeartStatusYes : ARHeartStatusNo;
 
         [ARSpotlight addToSpotlightIndex:state entity:self];
 
@@ -479,10 +566,10 @@
             success(response);
         }
     } failure:^(NSError *error) {
-        @strongify(self);
+        __strong typeof (wself) sself = wself;
         if (!self) { return; }
 
-        self->_heartStatus = ARHeartStatusNo;
+        sself->_heartStatus = ARHeartStatusNo;
 
         if (failure) {
             failure(error);
@@ -491,23 +578,17 @@
 }
 
 
-- (void)getFavoriteStatus:(void (^)(ARHeartStatus status))success failure:(void (^)(NSError *error))failure
+- (void)getFavoriteStatus:(nullable void (^)(ARHeartStatus status))success failure:(nullable void (^)(NSError *error))failure
 {
-    if ([User isTrialUser]) {
-        _heartStatus = ARHeartStatusNo;
-        success(ARHeartStatusNo);
-        return;
-    }
-
-    @weakify(self);
+    __weak typeof(self) wself = self;
 
     if (!_favDeferred) {
         KSDeferred *deferred = [KSDeferred defer];
         [ArtsyAPI checkFavoriteStatusForArtwork:self success:^(BOOL status) {
-            @strongify(self);
-            if (!self) { return; }
+            __strong typeof (wself) sself = wself;
+            if (!sself) { return; }
 
-            self->_heartStatus = status ? ARHeartStatusYes : ARHeartStatusNo;
+            sself->_heartStatus = status ? ARHeartStatusYes : ARHeartStatusNo;
 
             [deferred resolveWithValue:@(status)];
         } failure:^(NSError *error) {
@@ -518,17 +599,18 @@
     }
 
     [_favDeferred.promise then:^(id value) {
-        @strongify(self);
+        __strong typeof (wself) sself = wself;
 
-        success(self.heartStatus);
+        success(sself.heartStatus);
         return self;
     } error:^(NSError *error) {
         // Its a 404 if you have no artworks
+        __strong typeof (wself) sself = wself;
         NSHTTPURLResponse *response = [error userInfo][AFNetworkingOperationFailingURLResponseErrorKey];
         if (response.statusCode == 404) {
             success(ARHeartStatusNo);
         } else {
-            ARErrorLog(@"Failed fetching favorite status for artwork %@. Error: %@", self.artworkID, error.localizedDescription);
+            ARErrorLog(@"Failed fetching favorite status for artwork %@. Error: %@", sself.artworkID, error.localizedDescription);
             failure(error);
         }
         return error;
@@ -559,11 +641,6 @@
     return _heartStatus;
 }
 
-- (BOOL)shouldShowAuctionResults
-{
-    return [[NSUserDefaults standardUserDefaults] boolForKey:ARShowAuctionResultsButtonDefault] && self.partner && self.partner.type == ARPartnerTypeGallery && [self.category rangeOfString:@"Architecture"].location == NSNotFound && self.auctionResultCount.intValue > 0;
-}
-
 - (CGFloat)dimensionInInches:(CGFloat)dimension
 {
     switch (self.metric) {
@@ -587,11 +664,6 @@
 - (CGFloat)diameterInches
 {
     return [self dimensionInInches:[self.diameter floatValue]];
-}
-
-- (NSString *)auctionResultsPath
-{
-    return [NSString stringWithFormat:@"/artwork/%@/auction_results", self.artworkID];
 }
 
 - (void)setNilValueForKey:(NSString *)key
@@ -647,6 +719,11 @@
 - (NSURL *)spotlightThumbnailURL;
 {
     return self.urlForThumbnail;
+}
+
+- (NSString *)availablityString
+{
+    return [[self.class availabilityJSONTransformer] reverseTransformedValue:@(self.availability)];
 }
 
 @end

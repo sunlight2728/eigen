@@ -1,4 +1,4 @@
-
+#import "Bidder.h"
 
 
 @implementation Bidder
@@ -7,7 +7,8 @@
 {
     return @{
         @"bidderID" : @"id",
-        @"saleID" : @"sale.id"
+        @"saleID" : @"sale.id",
+        @"qualifiedForBidding" : @"qualified_for_bidding"
     };
 }
 

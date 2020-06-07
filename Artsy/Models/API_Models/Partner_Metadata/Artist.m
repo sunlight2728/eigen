@@ -1,5 +1,13 @@
+#import "Artist.h"
+
+#import "ArtsyAPI+Artworks.h"
+#import "ArtsyAPI+Following.h"
+#import "ArtsyAPI+RelatedModels.h"
 #import "ARNetworkConstants.h"
 #import "ARSpotlight.h"
+#import "User.h"
+#import "ARSwitchBoard.h"
+
 
 @interface Artist () {
     BOOL _isFollowed;
@@ -14,14 +22,14 @@
 {
     return @{
         @"artistID" : @"id",
+        @"uuid" : @"_id",
         @"name" : @"name",
         @"years" : @"years",
         @"birthday" : @"birthday",
         @"nationality" : @"nationality",
         @"blurb" : @"blurb",
-        @"publishedArtworksCount" : @"published_artworks_count",
-        @"forSaleArtworksCount" : @"forsale_artworks_count",
-        @"imageURLs" : @"image_urls"
+        @"imageURLs" : @"image_urls",
+        @"sortableID" : @"sortable_id"
     };
 }
 
@@ -69,17 +77,17 @@
 
 - (void)setFollowState:(BOOL)state success:(void (^)(id))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
     [ArtsyAPI setFavoriteStatus:state forArtist:self success:^(id response) {
-        @strongify(self);
-        self.followed = state;
+        __strong typeof (wself) sself = wself;
+        sself.followed = state;
         [ARSpotlight addToSpotlightIndex:state entity:self];
         if (success) {
             success(response);
         }
     } failure:^(NSError *error) {
-        @strongify(self);
-        self.followed = !state;
+        __strong typeof (wself) sself = wself;
+        sself.followed = !state;
         if (failure) {
             failure(error);
         }
@@ -88,15 +96,10 @@
 
 - (void)getFollowState:(void (^)(ARHeartStatus status))success failure:(void (^)(NSError *error))failure
 {
-    if ([User isTrialUser]) {
-        success(ARHeartStatusNo);
-        return;
-    }
-
-    @weakify(self);
+    __weak typeof(self) wself = self;
     [ArtsyAPI checkFavoriteStatusForArtist:self success:^(BOOL result) {
-        @strongify(self);
-        self.followed = result;
+        __strong typeof (wself) sself = wself;
+        sself.followed = result;
         success(result ? ARHeartStatusYes : ARHeartStatusNo);
     } failure:failure];
 }
@@ -143,6 +146,7 @@
 - (AFHTTPRequestOperation *)getRelatedArtists:(void (^)(NSArray *artists))success
 {
     return [ArtsyAPI getRelatedArtistsForArtist:self
+                                      excluding:nil
                                         success:success
                                         failure:^(NSError *error) {
             success(@[]);

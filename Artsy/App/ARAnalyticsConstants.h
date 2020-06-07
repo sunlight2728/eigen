@@ -1,4 +1,11 @@
-// Glbal
+#import <Foundation/Foundation.h>
+
+// If you are adding analytics, you may need to
+// update the schema for our analytics team:
+// https://docs.google.com/spreadsheets/u/1/d/1bLbeOgVFaWzLSjxLOBDNOKs757-zBGoLSM1lIz3OPiI/edit#gid=497747862
+//
+
+// Global
 
 extern NSString *const ARAnalyticsBackTapped;
 
@@ -18,41 +25,36 @@ extern NSString *const ARAnalyticsNotificationTapped;
 
 extern NSString *const ARAnalyticsFreshInstall;
 
-// Initial Splash Screen only, not trial splash
+// Universal Links
 
-extern NSString *const ARAnalyticsTappedSignUp;
-extern NSString *const ARAnalyticsTappedLogIn;
+extern NSString *const ARAnalyticsDeepLinkOpened;
 
 // Onboarding
 
 extern NSString *const ARAnalyticsSlideshowStarted;
 
-extern NSString *const ARAnalyticsOnboardingStarted;
-extern NSString *const ARAnalyticsOnboardingStartedCollectorLevel;
-extern NSString *const ARAnalyticsOnboardingCompletedCollectorLevel;
-extern NSString *const ARAnalyticsOnboardingStartedPersonalize;
-extern NSString *const ARAnalyticsOnboardingSkippedPersonalize;
-extern NSString *const ARAnalyticsOnboardingCompletedPersonalize;
-extern NSString *const ARAnalyticsOnboardingStartedPriceRange;
-extern NSString *const ARAnalyticsOnboardingCompletedPriceRange;
-extern NSString *const ARAnalyticsOnboardingCompleted;
+extern NSString *const ARAnalyticsOnboardingGetStarted;
+extern NSString *const ARAnalyticsOnboardingTappedSearch;
+extern NSString *const ARAnalyticsOnboardingBudgetSelected;
 
-// Sign in
+// Push notifications
 
-extern NSString *const ARAnalyticsSignInEmail;
-extern NSString *const ARAnalyticsSignInTwitter;
-extern NSString *const ARAnalyticsSignInFacebook;
-extern NSString *const ARAnalyticsSignInWebCredentials;
-extern NSString *const ARAnalyticsSignInError;
+extern NSString *const ARAnalyticsPushNotificationLocal;
+extern NSString *const ARAnalyticsPushNotificationApple;
 
-// Sign up
+// Note: Sign in / Sign up analyics live entirely in ARUserManager and OnboardingViewController
 
-extern NSString *const ARAnalyticsSignUpEmail;
-extern NSString *const ARAnalyticsSignUpTwitter;
-extern NSString *const ARAnalyticsSignUpFacebook;
 extern NSString *const ARAnalyticsAccountCreated;
-extern NSString *const ARAnalyticsSignUpError;
-extern NSString *const ARAnalyticsTryWithoutAccount;
+extern NSString *const ARAnalyticsLoggedIn;
+extern NSString *const ARAnalyticsAuthError;
+
+// Onboarding Account actions
+
+extern NSString *const ARAnalyticsOnboardingConnectWithApple;
+extern NSString *const ARAnalyticsOnboardingConnectWithFacebook;
+extern NSString *const ARAnalyticsOnboardingForgotPassword;
+extern NSString *const ARAnalyticsOnboardingForgotPasswordSent;
+extern NSString *const ARAnalyticsOnboardingAlreadyAccountBack;
 
 // Inquiring
 
@@ -61,17 +63,12 @@ extern NSString *const ARAnalyticsStartedSpecialistInquiry;
 extern NSString *const ARAnalyticsSubmittedInquiry;
 extern NSString *const ARAnalyticsInquiryError;
 
-// Trial
 
-extern NSString *const ARAnalyticsShowTrialSplash;
 extern NSString *const ARAnalyticsTappedHeroUnit;
-extern NSString *const ARAnalyticsTappedMainNavigationItem;
 
 // Sharing
 
 extern NSString *const ARAnalyticsShare;
-extern NSString *const ARAnalyticsHearted;
-extern NSString *const ARAnalyticsUnhearted;
 
 // Artwork
 
@@ -85,7 +82,6 @@ extern NSString *const ARAnalyticsPartnerShowView;
 
 // Artist
 
-extern NSString *const ARAnalyticsArtistView;
 extern NSString *const ARAnalyticsArtistFollow;
 extern NSString *const ARAnalyticsArtistUnfollow;
 extern NSString *const ARAnalyticsArtistTappedForSale;
@@ -118,9 +114,6 @@ extern NSString *const ARAnalyticsSearchClosed;
 extern NSString *const ARAnalyticsSearchCleared;
 extern NSString *const ARAnalyticsSearchStartedQuery;
 extern NSString *const ARAnalyticsSearchItemSelected;
-
-extern NSString *const ARAnalyticsFairSearch;
-extern NSString *const ARAnalyticsFairSearchItemSelected;
 
 // App Session
 
@@ -157,3 +150,17 @@ extern NSString *const ARAdjustCreatedAnAccount;
 extern NSString *const ARAdjustSentArtworkInquiry;
 extern NSString *const ARAdjustFirstUserInstall;
 extern NSString *const ARAdjustTappedBidButton;
+
+// Linking between analytics / app code
+
+extern NSInteger const ARNavButtonNotificationsTag;
+
+/// Auctions
+
+extern NSString *const ARAnalyticsAuctionBidButtonTapped;
+extern NSString *const ARAnalyticsArtworksRefineTapped;
+extern NSString *const ARAnalyticsAuctionContactTapped;
+extern NSString *const ARAnalyticsAuctionBuyersPremiumTapped;
+extern NSString *const ARAnalyticsTappedApplyRefine;
+
+extern NSString *const ARAnalyticsGraphQLResponseError;

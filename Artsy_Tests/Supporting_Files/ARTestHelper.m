@@ -5,7 +5,9 @@
 #import "ARSpotlight.h"
 #import "ARUserManager.h"
 
-#import <iRate/iRate.h>
+#import <SDWebImage/SDWebImageManager.h>
+#import "ARFonts.h"
+#import <Emission/AREmission.h>
 
 
 @implementation ARTestHelper
@@ -14,15 +16,17 @@
 {
     NSOperatingSystemVersion version = [NSProcessInfo processInfo].operatingSystemVersion;
 
-    NSAssert(version.majorVersion == 9 && version.minorVersion == 0,
-             @"The tests should be run on iOS 9.0, not %ld.%ld", version.majorVersion, version.minorVersion);
+    NSAssert(version.majorVersion == 12 && version.minorVersion == 4,
+             @"The tests should be run on iOS 12.4, not %ld.%ld", version.majorVersion, version.minorVersion);
 
     CGSize nativeResolution = [UIScreen mainScreen].nativeBounds.size;
-    NSAssert([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPhone && CGSizeEqualToSize(nativeResolution, CGSizeMake(750, 1334)),
-             @"The tests should be run on an iPhone 6, not a device with native resolution %@",
+    NSAssert([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPhone && CGSizeEqualToSize(nativeResolution, CGSizeMake(1125, 2436)),
+             @"The tests should be run on an iPhone X, not a device with native resolution %@",
              NSStringFromCGSize(nativeResolution));
 
     ARPerformWorkAsynchronously = NO;
+
+    [ARDefaults setup];
     [ARRouter setup];
 
     // Disable this so that no actual changes are made to the index as side-effects of favoriting entities.
@@ -32,11 +36,47 @@
     // The related ARUserManager methods can still be invoked, they will just silently do nothing.
     [[ARUserManager sharedManager] disableSharedWebCredentials];
 
-    /// Never run in tests
-    [[iRate sharedInstance] setRatedThisVersion:YES];
-
     /// Not really sure what this is for
     [[ARLogger sharedLogger] startLogging];
+
+    // Occasionally we get font issues in snapshots, this _potentially_
+    // could be a fix for this.
+    __unused UIFont *font = [UIFont serifBoldItalicFontWithSize:12];
+    font = [UIFont serifBoldFontWithSize:12];
+    font = [UIFont serifSemiBoldFontWithSize:12];
+    font = [UIFont serifFontWithSize:12];
+    font = [UIFont serifItalicFontWithSize:12];
+    font = [UIFont sansSerifFontWithSize:12];
+    font = [UIFont smallCapsSerifFontWithSize:12];
+
+    // Ensure that the image cache is just set up for testing
+    SDImageCache *imageCache = [[SDImageCache alloc] initWithNamespace:@"Testing" diskCacheDirectory:NSTemporaryDirectory()];
+    [[SDWebImageManager sharedManager] setValue:imageCache forKey:@"_imageCache"];
+
+    // Sets up AREmission manually
+    NSString *gravity = [[ARRouter baseApiURL] absoluteString];
+    NSString *metaphysics = [ARRouter baseMetaphysicsApiURLString];
+    AREmissionConfiguration *config = [[AREmissionConfiguration alloc] initWithUserID:@""
+                                                                  authenticationToken:@""
+                                                                          launchCount:0
+                                                                            sentryDSN:@""
+                                                                 stripePublishableKey:@""
+                                                                     googleMapsAPIKey:@""
+                                                                   mapBoxAPIClientKey:@""
+                                                                           gravityURL:gravity
+                                                                       metaphysicsURL:metaphysics
+                                                                        predictionURL:@""
+                                                                            userAgent:@"Eigen Tests"
+                                                                                  env:AREnvTest
+                                                                              options:@{}];
+
+    AREmission *emission = [[AREmission alloc] initWithConfiguration:config packagerURL:nil];
+    [AREmission setSharedInstance:emission];
+
+    // Needed for "usesDrawRect" based Nimble-Snapshots testing
+    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    self.window.rootViewController = [[UIViewController alloc] init];
+    [self.window makeKeyAndVisible];
 
     return YES;
 }
@@ -63,7 +103,7 @@ static UIWindow *_hostingWindow = nil;
     UIWindow *previousKeyWindow = [[UIApplication sharedApplication] keyWindow];
 
     UIViewController *viewController = [UIViewController new];
-    viewController.view.frame = [[UIScreen mainScreen] applicationFrame];
+    viewController.view.frame = [[UIScreen mainScreen] bounds];
     viewController.view.backgroundColor = [UIColor redColor];
     [viewController.view addSubview:view];
 

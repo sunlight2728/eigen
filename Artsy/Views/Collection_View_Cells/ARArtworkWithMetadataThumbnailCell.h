@@ -1,9 +1,16 @@
 /// Shows an image above a standard metadata view
-
 #import "ARItemThumbnailViewCell.h"
 #import "ARFeedImageLoader.h"
 
-@class ARArtworkThumbnailMetadataView;
+
+@class Artwork, ARArtworkThumbnailMetadataView;
+
+
+typedef enum : NSUInteger {
+    ARArtworkWithMetadataThumbnailCellPriceInfoModeAuctionInfo,
+    ARArtworkWithMetadataThumbnailCellPriceInfoModeSaleMessage,
+    ARArtworkWithMetadataThumbnailCellPriceInfoModeNone,
+} ARArtworkWithMetadataThumbnailCellPriceInfoMode;
 
 
 @interface ARArtworkWithMetadataThumbnailCell : ARItemThumbnailViewCell
@@ -14,5 +21,8 @@
 
 @property (nonatomic, assign) enum ARFeedItemImageSize imageSize;
 @property (nonatomic, readonly) ARArtworkThumbnailMetadataView *metadataView;
+
+/// By default, will use UIViewContentModeAspectFill
+@property (nonatomic, assign) enum UIViewContentMode imageViewContentMode;
 
 @end

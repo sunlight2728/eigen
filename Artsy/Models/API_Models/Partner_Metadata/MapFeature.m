@@ -1,12 +1,18 @@
-#import "ARValueTransformer.h"
+#import "MapFeature.h"
 
+#import "ARValueTransformer.h"
+#import "Image.h"
+
+#import "ARMacros.h"
+
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @implementation MapFeature
 
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(MapFeature.new, featureType) : @"feature_type",
+        ar_keypath(MapFeature.new, featureType) : @"feature_type",
     };
 }
 

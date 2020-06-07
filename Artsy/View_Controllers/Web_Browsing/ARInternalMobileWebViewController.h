@@ -1,5 +1,6 @@
 #import "ARExternalWebBrowserViewController.h"
 
+@class Fair;
 
 @interface ARInternalMobileWebViewController : ARExternalWebBrowserViewController <UIScrollViewDelegate>
 

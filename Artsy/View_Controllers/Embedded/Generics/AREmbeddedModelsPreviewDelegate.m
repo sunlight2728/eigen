@@ -1,9 +1,14 @@
 #import "AREmbeddedModelsPreviewDelegate.h"
+
+#import "Artist.h"
+#import "Artwork.h"
 #import "AREmbeddedModelsViewController.h"
 #import "AREmbeddedModelPreviewViewController.h"
-#import "ARSwitchBoard.h"
+#import "ARSwitchBoard+Eigen.h"
+#import "ARSwitchboard+Eigen.h"
 #import "ARTopMenuViewController.h"
 #import "ARSpotlight.h"
+#import "Gene.h"
 
 
 @interface AREmbeddedModelsPreviewDelegate ()
@@ -57,14 +62,10 @@
 {
     id object = viewControllerToCommit.object;
     id viewController = nil;
-    ARSwitchBoard *switchBoard = [ARSwitchBoard sharedInstance];
+    ARSwitchBoard *switchBoard = ARSwitchBoard.sharedInstance;
 
     if ([object isKindOfClass:Artwork.class]) {
-        NSArray *items = self.modelVC.items;
-
-        // TODO: Check for Fair context?
-        NSInteger index = [items indexOfObject:object];
-        viewController = [switchBoard loadArtworkSet:items inFair:nil atIndex:index];
+        viewController = [switchBoard loadArtwork:object inFair:nil];
 
     } else if ([object isKindOfClass:Artist.class]) {
         viewController = [switchBoard loadArtistWithID:[object artistID]];

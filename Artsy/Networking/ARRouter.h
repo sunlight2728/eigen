@@ -1,4 +1,8 @@
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
 
+@class Artist, Artwork, Fair, FairOrganizer, Gene, PartnerShow, Profile;
+@class AFHTTPSessionManager;
 
 
 @interface ARRouter : NSObject
@@ -7,23 +11,30 @@
 + (NSSet *)artsyHosts;
 + (NSURL *)baseApiURL;
 + (NSURL *)baseWebURL;
-+ (NSURL *)baseDesktopWebURL;
++ (NSString *)baseMetaphysicsApiURLString;
 
 + (AFHTTPSessionManager *)httpClient;
 + (void)setupWithBaseApiURL:(NSURL *)baseApiURL;
 
 + (void)setupUserAgent;
 + (BOOL)isWebURL:(NSURL *)url;
++ (BOOL)isTelURL:(NSURL *)url;
+
++ (BOOL)isPaymentRequestURL:(NSURL *)url;
++ (BOOL)isProductionPaymentRequestURL:(NSURL *)url;
++ (BOOL)isBNMORequestURL:(NSURL *)url;
 
 + (BOOL)isInternalURL:(NSURL *)url;
 
 + (NSURLRequest *)requestForURL:(NSURL *)url;
 
++ (NSString *)userAgent;
+
 #pragma mark - OAuth
 
 + (void)setAuthToken:(NSString *)token;
 + (NSURLRequest *)newOAuthRequestWithUsername:(NSString *)username password:(NSString *)password;
-+ (NSURLRequest *)newTwitterOAuthRequestWithToken:(NSString *)token andSecret:(NSString *)secret;
++ (NSURLRequest *)newAppleOAuthRequestWithUID:(NSString *)appleUID;
 + (NSURLRequest *)newFacebookOAuthRequestWithToken:(NSString *)token;
 
 #pragma mark - XApp
@@ -32,12 +43,14 @@
 
 #pragma mark - User creation
 
++ (NSURLRequest *)checkExistingUserWithEmail:(NSString *)email;
 + (NSURLRequest *)newCreateUserRequestWithName:(NSString *)name email:(NSString *)email password:(NSString *)password;
++ (NSURLRequest *)newCreateUserViaAppleRequestWithUID:(NSString *)appleUID email:(NSString *)email name:(NSString *)name;
 + (NSURLRequest *)newCreateUserViaFacebookRequestWithToken:(NSString *)token email:(NSString *)email name:(NSString *)name;
-+ (NSURLRequest *)newCreateUserViaTwitterRequestWithToken:(NSString *)token secret:(NSString *)secret email:(NSString *)email name:(NSString *)name;
 
 #pragma mark - User
 
++ (NSURLRequest *)newMeHEADRequest;
 + (NSURLRequest *)newUserInfoRequest;
 + (NSURLRequest *)newUserEditRequestWithParams:(NSDictionary *)params;
 + (NSURLRequest *)newCheckFollowingProfileHeadRequest:(NSString *)profileID;
@@ -65,18 +78,19 @@
 + (NSURLRequest *)newAdditionalImagesRequestForArtworkWithID:(NSString *)artworkID;
 + (NSURLRequest *)newNewArtworksRequestWithParams:(NSDictionary *)params;
 + (NSURLRequest *)newArtistArtworksRequestWithParams:(NSDictionary *)params andArtistID:(NSString *)artistID;
-
++ (NSURLRequest *)recordArtworkViewRequest:(NSString *)artworkID;
 
 #pragma mark - Artwork Favorites (items in the saved-artwork collection)
 
 + (NSURLRequest *)newArtworkFavoritesRequestWithFair:(Fair *)fair;
 + (NSURLRequest *)newSetArtworkFavoriteRequestForArtwork:(Artwork *)artwork status:(BOOL)status;
-+ (NSURLRequest *)newArtworksFromUsersFavoritesRequestWithID:(NSString *)userID page:(NSInteger)page;
++ (NSURLRequest *)newArtworksFromUsersFavoritesRequestWithCursor:(NSString *)cursor;
 + (NSURLRequest *)newCheckFavoriteStatusRequestForArtwork:(Artwork *)artwork;
 + (NSURLRequest *)newCheckFavoriteStatusRequestForArtworks:(NSArray *)artworks;
 + (NSURLRequest *)newFairsRequestForArtwork:(Artwork *)artwork;
 + (NSURLRequest *)newShowsRequestForArtworkID:(NSString *)artworkID andFairID:(NSString *)fairID;
-+ (NSURLRequest *)newPendingOrderWithArtworkID:(NSString *)artworkID editionSetID:(NSString *)editionSetID;
++ (NSURLRequest *)newBuyNowRequestWithArtworkID:(NSString *)artworkID;
++ (NSURLRequest *)newOfferRequestWithArtworkID:(NSString *)artworkID;
 
 #pragma mark - Artist
 
@@ -91,7 +105,13 @@
 + (NSURLRequest *)newFollowArtistRequest:(Artist *)artist;
 + (NSURLRequest *)newUnfollowArtistRequest:(Artist *)artist;
 
-+ (NSURLRequest *)newArtistsRelatedToArtistRequest:(Artist *)artist;
++ (NSURLRequest *)newArtistRelatedToArtistRequest:(Artist *)artist excluding:(NSArray *)artistsToExclude;
++ (NSURLRequest *)newArtistsRelatedToArtistRequest:(Artist *)artist excluding:(NSArray *)artistsToExclude;
++ (NSURLRequest *)newGeneRelatedToGeneRequest:(Gene *)gene excluding:(NSArray *)genesToExclude;
++ (NSURLRequest *)newGenesRelatedToGeneRequest:(Gene *)gene excluding:(NSArray *)genesToExclude;
++ (NSURLRequest *)newArtistsPopularRequest;
++ (NSURLRequest *)newArtistsPopularRequestFallback;
++ (NSURLRequest *)newGenesPopularRequest;
 + (NSURLRequest *)newShowsRequestForArtist:(NSString *)artistID;
 + (NSURLRequest *)newShowsRequestForArtistID:(NSString *)artistID inFairID:(NSString *)fairID;
 
@@ -124,7 +144,8 @@
 
 + (NSURLRequest *)newSearchRequestWithQuery:(NSString *)query;
 + (NSURLRequest *)newSearchRequestWithFairID:(NSString *)fairID andQuery:(NSString *)query;
-+ (NSURLRequest *)newArtistSearchRequestWithQuery:(NSString *)query;
++ (NSURLRequest *)newArtistSearchRequestWithQuery:(NSString *)query excluding:(NSArray *)artistsToExclude;
++ (NSURLRequest *)newGeneSearchRequestWithQuery:(NSString *)query excluding:(NSArray *)genesToExclude;
 
 + (NSURLRequest *)directImageRequestForModel:(Class)model andSlug:(NSString *)slug;
 
@@ -150,10 +171,21 @@
 
 + (NSURLRequest *)salesWithArtworkRequest:(NSString *)artworkID;
 + (NSURLRequest *)artworksForSaleRequest:(NSString *)saleID;
++ (NSURLRequest *)artworksForSaleRequest:(NSString *)saleID page:(NSInteger)page pageSize:(NSInteger)pageSize;
++ (NSURLRequest *)liveSaleStateRequest:(NSString *)saleID host:(NSString *)host;
+
+// Send in role as nil for when a user is logged out
++ (NSURLRequest *)liveSaleStaticDataRequest:(NSString *)saleID role:(NSString *)role;
+
 + (NSURLRequest *)biddersRequest;
++ (NSURLRequest *)biddersRequestForSale:(NSString *)saleID;
++ (NSURLRequest *)lotStandingsRequestForSaleID:(NSString *)saleID;
 + (NSURLRequest *)createBidderPositionsForSaleID:(NSString *)saleID artworkID:(NSString *)artworkID maxBidAmountCents:(NSInteger)maxBidAmountCents;
 + (NSURLRequest *)bidderPositionsRequestForSaleID:(NSString *)saleID artworkID:(NSString *)artworkID;
 + (NSURLRequest *)saleArtworkRequestForSaleID:(NSString *)saleID artworkID:(NSString *)artworkID;
++ (NSURLRequest *)requestForSaleID:(NSString *)saleID;
+
++ (NSString *)baseCausalitySocketURLString;
 
 #pragma mark - Ordered Sets
 
@@ -164,9 +196,7 @@
 
 #pragma mark - Recommendations
 
-+ (NSURLRequest *)suggestedHomepageArtworksRequest;
-+ (NSURLRequest *)worksForYouRequest;
-+ (NSURLRequest *)worksForYouCountRequest;
++ (NSURLRequest *)markNotificationsAsReadRequest;
 
 #pragma mark - Misc Site
 
@@ -174,8 +204,21 @@
 + (NSURLRequest *)newForgotPasswordRequestWithEmail:(NSString *)email;
 + (NSURLRequest *)newSiteFeaturesRequest;
 + (NSURLRequest *)newSetDeviceAPNTokenRequest:(NSString *)token forDevice:(NSString *)device;
++ (NSURLRequest *)newDeleteDeviceRequest:(NSString *)token;
 + (NSURLRequest *)newUptimeURLRequest;
 + (NSURLRequest *)newSystemTimeRequest;
 + (NSURLRequest *)newRequestOutbidNotificationRequest;
++ (NSURLRequest *)newRequestForBlankPage;
+
+#pragma mark - Pages
+
++ (NSURLRequest *)newRequestForPageContent:(NSString *)slug;
+
+
+#pragma mark - Misc
+
++ (NSURLRequest *)newHEADRequestForPath:(NSString *)path;
++ (NSURLRequest *)newSailthruRegisterClickAndDecodeURLRequest:(NSURL *)encodedURL;
++ (NSURLRequest *)newTotalUnreadMessagesCountRequest;
 
 @end

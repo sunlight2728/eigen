@@ -5,8 +5,8 @@
 NSString *const ARTestAccountLogin = @"energy_test_bot@gmail.com";
 NSString *const ARTestAccountPassword = @"zaqwsxcde";
 
-const CGFloat ARAnimationQuickDuration = 0.15;
-const CGFloat ARAnimationDuration = 0.3;
+const NSTimeInterval ARAnimationQuickDuration = 0.15;
+const NSTimeInterval ARAnimationDuration = 0.3;
 
 NSString *const AROExpiryDateKey = @"expires_in";
 NSString *const ARXAppToken = @"xapp_token";
@@ -18,9 +18,19 @@ NSString *const ARNetworkUnavailableNotification = @"network_unavailable_notific
 
 NSString *const ARAuctionArtworkBidUpdatedNotification = @"ARAuctionArtworkBidUpdated";
 NSString *const ARAuctionArtworkRegistrationUpdatedNotification = @"ARAuctionArtworkRegistrationUpdated";
+NSString *const ARAuctionSaleOnHoldBannerTappedNotification = @"ARAuctionSaleOnHoldBannerTappedNotification";
 NSString *const ARAuctionIDKey = @"ARAuctionID";
 NSString *const ARAuctionArtworkIDKey = @"ARAuctionArtworkID";
+
+NSString *const ARPaymentRequestPaidNotification = @"ARPaymentRequestPaid";
+NSString *const ARPaymentRequestURLKey = @"ARPaymentRequestURL";
 
 NSString *const ARAPNSDeviceTokenKey = @"apns_device_token";
 
 BOOL ARPerformWorkAsynchronously = YES;
+
+#ifdef DEMO_MODE
+const BOOL ARIsRunningInDemoMode = YES;
+#else
+const BOOL ARIsRunningInDemoMode = NO;
+#endif

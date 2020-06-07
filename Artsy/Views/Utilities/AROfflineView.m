@@ -1,8 +1,12 @@
 #import "AROfflineView.h"
+
+#import "ARFonts.h"
 #import "ORStackView+ArtsyViews.h"
 
 #import <objc/message.h>
-
+#import <Artsy-UIButtons/ARButtonSubclasses.h>
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+#import <ObjectiveSugar/ObjectiveSugar.h>
 
 @interface AROfflineView ()
 @property (readonly, nonatomic, strong) ARMenuButton *refreshButton;
@@ -24,14 +28,13 @@
             [stackView addPageTitleWithString:NSLocalizedString(@"Can’t Connect", @"Offline mode view title")],
             [stackView addSerifPageSubtitle:NSLocalizedString(@"Check your network and try again", @"Offline mode view subtitle")],
         ] each:^(UILabel *label) {
-            label.textColor = [UIColor artsyHeavyGrey];
+            label.textColor = [UIColor artsyGraySemibold];
         }];
 
         UIImage *buttonIcon = [UIImage imageNamed:@"RefreshIcon"];
         _refreshButton = [ARMenuButton new];
-        [_refreshButton setBorderColor:[UIColor artsyLightGrey] forState:UIControlStateNormal animated:NO];
+        [_refreshButton setBorderColor:[UIColor artsyGrayRegular] forState:UIControlStateNormal animated:NO];
         [_refreshButton setBackgroundColor:[UIColor whiteColor] forState:UIControlStateNormal animated:NO];
-        // [button ar_extendHitTestSizeByWidth:10 andHeight:10];
         [_refreshButton setImage:buttonIcon forState:UIControlStateNormal];
         [_refreshButton addTarget:self action:@selector(forceRefreshFeedItems:) forControlEvents:UIControlEventTouchUpInside];
         _refreshButton.adjustsImageWhenDisabled = NO;
@@ -83,6 +86,7 @@
 
 // Don’t immediately stop the animation, instead let it do a full rotation so that the user has the feeling we at least
 // tried when a connection fails immediately again.
+
 - (void)refreshFailed;
 {
     self.stopRotating = YES;

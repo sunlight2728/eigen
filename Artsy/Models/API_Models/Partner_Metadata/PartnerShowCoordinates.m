@@ -1,13 +1,16 @@
 #import "PartnerShowCoordinates.h"
 
+#import "ARMacros.h"
+
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @implementation PartnerShowCoordinates
 
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(PartnerShowCoordinates.new, longitude) : @"lng",
-        @keypath(PartnerShowCoordinates.new, latitude) : @"lat",
+        ar_keypath(PartnerShowCoordinates.new, longitude) : @"lng",
+        ar_keypath(PartnerShowCoordinates.new, latitude) : @"lat",
     };
 }
 

@@ -1,5 +1,9 @@
-#import <ISO8601DateFormatter/ISO8601DateFormatter.h>
+#import "SystemTime.h"
 
+#import "ARMacros.h"
+
+#import <ISO8601DateFormatter/ISO8601DateFormatter.h>
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @interface SystemTime ()
 @property (nonatomic, readonly, strong) NSString *time;
@@ -25,7 +29,7 @@
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(SystemTime.new, utcOffset) : @"utc_offset",
+        ar_keypath(SystemTime.new, utcOffset) : @"utc_offset",
     };
 }
 

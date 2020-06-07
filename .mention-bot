@@ -1,0 +1,5 @@
+{
+  "maxReviewers": 1,
+  "requiredOrgs": ["artsy"],
+  "userBlacklist": ["1aurabrown"]
+}

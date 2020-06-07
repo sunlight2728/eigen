@@ -1,19 +1,30 @@
 #import "ARSpotlight.h"
+
+#import "Artist.h"
+#import "Artwork.h"
 #import "ARUserActivity.h"
 #import "ARRouter.h"
 #import "ARFileUtils.h"
+#import "Fair.h"
+#import "Gene.h"
+#import "Profile.h"
 
 #import "ARArtworkFavoritesNetworkModel.h"
 #import "ARGeneFavoritesNetworkModel.h"
 #import "ARArtistFavoritesNetworkModel.h"
+#import "ARDispatchManager.h"
+#import "ARLogger.h"
 
 #import "NSDate+DateRange.h"
 
 #import <CoreSpotlight/CoreSpotlight.h>
+#import <MobileCoreServices/MobileCoreServices.h>
 #import <MMMarkdown/MMMarkdown.h>
 #import <SDWebImage/SDImageCache.h>
+#import <SDWebImage/SDWebImageManager.h>
 
 
+static BOOL ARSpotlightDisabled = NO;
 static BOOL ARSpotlightAvailable = NO;
 static dispatch_queue_t ARSpotlightQueue = nil;
 static NSMutableSet *ARIndexedEntities = nil;
@@ -45,8 +56,12 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 + (void)load;
 {
     ARSpotlightAvailable = NSClassFromString(@"CSSearchableIndex") != nil && [CSSearchableIndex isIndexingAvailable];
+    
+    // TODO: Disabled until we get to (and decide to) work on https://github.com/artsy/collector-experience/issues/810
+    // ARSpotlightDisabled = !ARSpotlightAvailable;
+    ARSpotlightDisabled = YES;
 
-    if (ARSpotlightAvailable) {
+    if (!ARSpotlightDisabled) {
         ARSearchableIndex = [CSSearchableIndex defaultSearchableIndex];
 
         ARSpotlightQueue = dispatch_queue_create("net.artsy.artsy.ARSpotlightQueue", DISPATCH_QUEUE_SERIAL);
@@ -72,12 +87,14 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 
 + (NSURL *)webpageURLForEntity:(id<ARSpotlightMetadataProvider>)entity;
 {
-    return [[ARRouter baseDesktopWebURL] URLByAppendingPathComponent:entity.publicArtsyPath];
+    return [[ARRouter baseWebURL] URLByAppendingPathComponent:entity.publicArtsyPath];
 }
 
 + (void)disableIndexing;
 {
+    if (ARSpotlightDisabled) return;
     dispatch_sync(ARSpotlightQueue, ^{
+        ARSpotlightDisabled = YES;
         ARSearchableIndex = nil;
         ARIndexedEntities = nil;
         ARIndexedEntitiesFile = nil;
@@ -96,9 +113,17 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 
 + (void)indexAllUsersFavorites;
 {
-    if (!ARSpotlightAvailable) {
+    if (ARSpotlightDisabled) {
         return;
     }
+
+    // Disable eager decompression of images. With the amount we end up downloading, eager loading
+    // takes a whole lot of memory.
+    //
+    // TODO As this globally disables it, we should look at if this can be improved upon.
+    SDWebImageManager *manager = [SDWebImageManager sharedManager];
+    manager.imageCache.shouldDecompressImages = NO;
+    manager.imageDownloader.shouldDecompressImages = NO;
 
     NSMutableArray *networkModels = [NSMutableArray new];
     [networkModels addObject:[ARArtworkFavoritesNetworkModel new]];
@@ -114,9 +139,11 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 
     dispatch_block_t finalizeBlock = ^{
 #ifdef DEBUG
-        if (application.applicationState == UIApplicationStateBackground) {
-            NSLog(@"Remaining allowed background time by task finalizing: %f", application.backgroundTimeRemaining);
-        }
+        ar_dispatch_main_queue(^{
+            if (application.applicationState == UIApplicationStateBackground) {
+                NSLog(@"Remaining allowed background time by task finalizing: %f", application.backgroundTimeRemaining);
+            }
+        });
 #endif
         [application endBackgroundTask:backgroundTask];
         backgroundTask = UIBackgroundTaskInvalid;
@@ -163,24 +190,23 @@ ARStringByStrippingMarkdown(NSString *markdownString)
             }
         });
     }
-                       failure:^(NSError *error) {
+        failure:^(NSError *error) {
         ARErrorLog(@"Failed to fetch favorites, cancelling: %@", error);
         finalizeBlock();
-    }];
+        }];
 }
 
 #pragma mark - CSSearchableIndex
 
 + (void)addToSpotlightIndex:(BOOL)addOrRemove entity:(id<ARSpotlightMetadataProvider>)entity;
 {
-    if (!ARSpotlightAvailable) {
-        return;
-    }
+    if (ARSpotlightDisabled) return;
     addOrRemove ? [self addEntityToSpotlightIndex:entity] : [self removeEntityFromSpotlightIndex:entity];
 }
 
 + (void)addEntityToSpotlightIndex:(id<ARSpotlightMetadataProvider>)entity;
 {
+    if (ARSpotlightDisabled) return;
     ar_dispatch_on_queue(ARSpotlightQueue, ^{
         [self searchAttributesForEntity:entity includeIdentifier:YES completion:^(CSSearchableItemAttributeSet *attributeSet) {
             NSString *domainIdentifier = nil;
@@ -212,6 +238,7 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 
 + (void)removeEntityFromSpotlightIndex:(id<ARSpotlightMetadataProvider>)entity;
 {
+    if (ARSpotlightDisabled) return;
     ar_dispatch_on_queue(ARSpotlightQueue, ^{
         [self removeEntityByIdentifierFromSpotlightIndex:[self webpageURLForEntity:entity].absoluteString];
     });
@@ -219,6 +246,7 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 
 + (void)removeEntityByIdentifierFromSpotlightIndex:(NSString *)identifier;
 {
+    if (ARSpotlightDisabled) return;
     ar_dispatch_on_queue(ARSpotlightQueue, ^{
         [self.searchableIndex deleteSearchableItemsWithIdentifiers:@[identifier]
                                               completionHandler:^(NSError *error) {
@@ -245,6 +273,7 @@ ARStringByStrippingMarkdown(NSString *markdownString)
                                           includeIdentifier:(BOOL)includeIdentifier
                                                  completion:(ARSearchAttributesCompletionBlock)completion;
 {
+    if (ARSpotlightDisabled) return nil;
     CSSearchableItemAttributeSet *attributeSet = [[CSSearchableItemAttributeSet alloc] initWithItemContentType:(NSString *)kUTTypeData];
 
     attributeSet.title = entity.name;
@@ -276,13 +305,29 @@ ARStringByStrippingMarkdown(NSString *markdownString)
                               options:0
                              progress:nil
                             completed:^(UIImage *image, NSError *_, SDImageCacheType __, BOOL ____, NSURL *_____) {
-            ar_dispatch_on_queue(ARSpotlightQueue, ^{
-                if (image) {
-                    attributeSet.thumbnailData = UIImagePNGRepresentation(image);
-                }
-                completion(attributeSet);
-            });
-        }];
+            if (image) {
+                // Instead of dumping the image back to data, just have Spotlight load it from disk.
+                // This will save us a lot of memory.
+                NSString *cacheKey = [manager cacheKeyForURL:thumbnailURL];
+                // Need to use the block variant, to ensure that the cache has saved the file yet.
+                [manager.imageCache diskImageExistsWithKey:cacheKey completion:^(BOOL isInCache) {
+                    ar_dispatch_on_queue(ARSpotlightQueue, ^{
+                        if (isInCache) {
+                            NSString *cachePath = [manager.imageCache defaultCachePathForKey:cacheKey];
+                            attributeSet.thumbnailURL = [NSURL fileURLWithPath:cachePath];
+                        } else {
+                            // Cache miss, for some reason.
+                            attributeSet.thumbnailData = UIImagePNGRepresentation(image);
+                        }
+                        completion(attributeSet);
+                    });
+                }];
+            } else {
+                ar_dispatch_on_queue(ARSpotlightQueue, ^{
+                    completion(attributeSet);
+                });
+            }
+                            }];
     }
 
     return attributeSet;
@@ -323,4 +368,3 @@ ARStringByStrippingMarkdown(NSString *markdownString)
 }
 
 @end
-

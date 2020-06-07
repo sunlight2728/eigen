@@ -1,6 +1,7 @@
 #import "ARRouter.h"
 #import "AROptions.h"
 #import "ARNetworkConstants.h"
+#import "ARUserManager+Stubs.h"
 
 SpecBegin(ARRouter);
 
@@ -15,7 +16,7 @@ describe(@"requestForURL", ^{
         });
 
         it(@"sets router auth token for Artsy URLs", ^{
-            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://m.artsy.net"]];
+            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://www.artsy.net"]];
             expect([request valueForHTTPHeaderField:ARAuthHeader]).to.equal(@"token");
         });
 
@@ -35,7 +36,7 @@ describe(@"requestForURL", ^{
         });
         
         it(@"sets router xapp token for Artsy URLs", ^{
-            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://m.artsy.net"]];
+            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://www.artsy.net"]];
             expect([request valueForHTTPHeaderField:ARXappHeader]).to.equal(@"token");
         });
         
@@ -62,12 +63,17 @@ describe(@"isInternalURL", ^{
         expect([ARRouter isInternalURL:url]).to.beTruthy();
     });
 
-    it(@"returns true for any artsy url", ^{
+    it(@"returns true for every artsy url", ^{
         NSSet *artsyHosts = [ARRouter artsyHosts];
         for (NSString *host in artsyHosts){
             NSURL *url = [[NSURL alloc] initWithString:NSStringWithFormat(@"%@/some/path", host)];
             expect([ARRouter isInternalURL:url]).to.beTruthy();
         }
+    });
+
+    it(@"returns true for artsy subdomains", ^{
+        NSURL *url = [[NSURL alloc] initWithString:@"http://anything.artsy.net"];
+        expect([ARRouter isInternalURL:url]).to.beTruthy();
     });
     
     it(@"returns false for external urls", ^{
@@ -103,6 +109,39 @@ describe(@"isWebURL", ^{
     });
 });
 
+describe(@"isPaymentRequestURL", ^{
+    it(@"returns YES with a staging url", ^{
+        NSURL *url = [NSURL URLWithString:@"http://invoicing-demo-partner.lewitt-web-public-staging.artsy.net/invoices/42/gUsxioLRJQaBunE73cWMwjfv"];
+        expect([ARRouter isPaymentRequestURL:url]).to.beTruthy();
+    });
+
+    it(@"returns YES with a production url", ^{
+        NSURL *url = [NSURL URLWithString:@"https://invoicing-demo-partner.artsyinvoicing.com/invoices/42/gUsxioLRJQaBunE73cWMwjfv"];
+        expect([ARRouter isPaymentRequestURL:url]).to.beTruthy();
+    });
+    
+    it(@"returns that a url is a production payment request url", ^{
+        NSURL *stagingURL = [NSURL URLWithString:@"http://invoicing-demo-partner.lewitt-web-public-staging.artsy.net/invoices/42/gUsxioLRJQaBunE73cWMwjfv"];
+        expect([ARRouter isProductionPaymentRequestURL:stagingURL]).to.beFalsy();
+
+        NSURL *productionURL = [NSURL URLWithString:@"https://invoicing-demo-partner.artsyinvoicing.com/invoices/42/gUsxioLRJQaBunE73cWMwjfv"];
+        expect([ARRouter isProductionPaymentRequestURL:productionURL]).to.beTruthy();
+    });
+});
+
+describe(@"isBNMORequestURL", ^{
+    it(@"returns YES with an orders URL", ^{
+        NSURL *url = [NSURL URLWithString:@"/orders/some-bnmo-order-id"];
+        expect([ARRouter isBNMORequestURL:url]).to.beTruthy();
+    });
+
+    it(@"returns YES with an absolte orders URL", ^{
+        // Emission routes relative URLs, but let's make sure it works for absolute URLs, too.
+        NSURL *url = [NSURL URLWithString:@"https://artsy.net/orders/some-bnmo-order-id"];
+        expect([ARRouter isBNMORequestURL:url]).to.beTruthy();
+    });
+});
+
 describe(@"User-Agent", ^{
     __block NSString *userAgent = [[NSUserDefaults standardUserDefaults] valueForKey:@"UserAgent"];
 
@@ -127,12 +166,7 @@ describe(@"User-Agent", ^{
         expect(userAgent).to.contain([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
     });
 
-    it(@"preserves simulator information", ^{
-        expect(userAgent).to.contain(@"iPhone Simulator");
-    });
-
     it(@"is contained in requests sent out from router", ^{
-
         Artwork *artwork = [Artwork modelWithJSON:@{ @"id": @"artwork_id" }];
         NSURLRequest *request = [ARRouter newArtworkInquiryRequestForArtwork:artwork name:@"name" email:@"email.com" message:@"message" analyticsDictionary:@{} shouldContactGallery:NO];
 
@@ -150,14 +184,40 @@ describe(@"User-Agent", ^{
     });
 });
 
+//describe(@"sending eigen uuids to martsy/force", ^{
+//    __block id userMock;
+//    after(^{
+//        [userMock stopMocking];
+//    });
+//
+//    it(@"logged in users don't send the uuid", ^{
+//        id userMock = [OCMockObject niceMockForClass:[User class]];
+//        [[[userMock stub] andReturnValue:@(NO)] isLocalTemporaryUser];
+//        [ARRouter setup];
+//
+//        NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://www.artsy.net"]];
+//        expect([request valueForHTTPHeaderField:AREigenLocalTemporaryUserIDHeader]).to.beFalsy();
+//    });
+//
+//    it(@"other websites dont get the uuid", ^{
+//        id userMock = [OCMockObject niceMockForClass:[User class]];
+//        [[[userMock stub] andReturnValue:@(YES)] isLocalTemporaryUser];
+//
+//        [ARRouter setup];
+//
+//        NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://orta.io"]];
+//        expect([request valueForHTTPHeaderField:AREigenLocalTemporaryUserIDHeader]).to.beFalsy();
+//    });
+//});
+
 describe(@"baseWebURL", ^{
     beforeEach(^{
         [AROptions setBool:false forOption:ARUseStagingDefault];
         [ARRouter setup];
     });
     
-    it(@"points to artsy mobile on iphone", ^{
-        expect([ARRouter baseWebURL]).to.equal([NSURL URLWithString:@"https://m.artsy.net"]);
+    it(@"points to artsy web on iphone", ^{
+        expect([ARRouter baseWebURL]).to.equal([NSURL URLWithString:@"https://www.artsy.net"]);
     });
     
     it(@"points to artsy web on ipad", ^{
@@ -165,6 +225,19 @@ describe(@"baseWebURL", ^{
         expect([ARRouter baseWebURL]).to.equal([NSURL URLWithString:@"https://www.artsy.net"]);
         [ARTestContext stopStubbing];
     });
+});
+
+describe(@"metaphysics", ^{
+    it(@"does not add a role for nil role param", ^{
+        NSURLRequest *request = [ARRouter liveSaleStaticDataRequest:@"my-sale" role:nil];
+        expect([[NSString alloc] initWithData:request.HTTPBody encoding:NSUTF8StringEncoding]).toNot.contain(@"role:");
+    });
+
+    it(@"adds an uppercased role when using the role param", ^{
+        NSURLRequest *request = [ARRouter liveSaleStaticDataRequest:@"my-sale" role:@"my_role"];
+        expect([[NSString alloc] initWithData:request.HTTPBody encoding:NSUTF8StringEncoding]).to.contain(@"role: MY_ROLE");
+    });
+
 });
 
 SpecEnd;

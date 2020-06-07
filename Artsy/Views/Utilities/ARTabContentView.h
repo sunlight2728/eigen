@@ -1,10 +1,14 @@
+#import <UIKit/UIKit.h>
+
 @class ARTabContentView;
+
 @protocol ARTabViewDataSource <NSObject>
 @required
 - (UINavigationController *)viewControllerForTabContentView:(ARTabContentView *)tabContentView atIndex:(NSInteger)index;
 - (BOOL)tabContentView:(ARTabContentView *)tabContentView canPresentViewControllerAtIndex:(NSInteger)index;
 - (NSInteger)numberOfViewControllersForTabContentView:(ARTabContentView *)tabContentView;
 - (NSUInteger)badgeNumberForTabAtIndex:(NSInteger)index;
+- (NSString *)analyticsDescriptionForTabAtIndex:(NSInteger)index;
 - (void)setBadgeNumber:(NSUInteger)number forTabAtIndex:(NSInteger)index;
 @end
 
@@ -45,6 +49,7 @@
 @property (nonatomic, assign, readonly) NSInteger currentViewIndex;
 @property (nonatomic, assign, readonly) NSInteger previousViewIndex;
 - (void)setCurrentViewIndex:(NSInteger)currentViewIndex animated:(BOOL)animated;
+- (void)forceSetViewController:(UINavigationController *)viewController atIndex:(NSInteger)index animated:(BOOL)animated;
 - (void)returnToPreviousViewIndex;
 
 // Move to the next or previous tab, if you're at the end it does nothing

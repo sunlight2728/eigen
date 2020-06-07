@@ -1,3 +1,7 @@
+// We want to ignore the NSKeyedUnarchiver, since we'll be moving this to React Native pretty soon anyway.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 SpecBegin(Profile);
 
 __block Profile *profile;
@@ -145,6 +149,29 @@ describe(@"imageURL", ^{
         it(@"uses the specified icon version", ^{
             expect(profile.iconURL).to.equal(@"http://static1.artsy.net/profile_icons/530cc50c9c18dbab9a00005b/large.png");
         });
+
+        it(@"uses the square avatar icon version", ^{
+            expect(profile.avatarURLString).to.equal(@"http://static1.artsy.net/profile_icons/530cc50c9c18dbab9a00005b/square.png");
+        });
+    });
+
+
+    describe(@"with only a large image", ^{
+        before(^{
+            profile = [Profile modelWithJSON:@{
+                @"id" : @"profile-id",
+                @"default_icon_version" : @"large",
+                @"icon" : @{
+                    @"image_urls" : @{
+                        @"large" : @"http://static1.artsy.net/profile_icons/530cc50c9c18dbab9a00005b/large.png"
+                    }
+                }
+            }];
+        });
+
+        it(@"uses the square avatar icon version", ^{
+            expect(profile.iconURL).to.equal(@"http://static1.artsy.net/profile_icons/530cc50c9c18dbab9a00005b/large.png");
+        });
     });
 
     describe(@"with no image", ^{
@@ -166,3 +193,5 @@ describe(@"imageURL", ^{
 });
 
 SpecEnd;
+
+#pragma clang diagnostic pop

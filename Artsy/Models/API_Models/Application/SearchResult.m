@@ -1,5 +1,15 @@
 #import "SearchResult.h"
+
+#import "Artist.h"
+#import "Artwork.h"
 #import "ARRouter.h"
+#import "Gene.h"
+#import "Fair.h"
+#import "PartnerShow.h"
+#import "Profile.h"
+#import "SiteFeature.h"
+
+#import <ObjectiveSugar/ObjectiveSugar.h>
 
 static NSDictionary *classMap;
 
@@ -24,7 +34,7 @@ static NSDictionary *classMap;
         @"artist" : [Artist class],
         @"profile" : [Profile class],
         @"feature" : [SiteFeature class],
-
+        @"fair" : [Fair class],
         // This is _NOT_ from the API, but comes from ARFairSearchVC
         @"partnershow" : [PartnerShow class]
 
@@ -40,6 +50,7 @@ static NSDictionary *classMap;
         @"label" : @"label",
         @"searchDetail" : @"search_detail",
         @"isPublished" : @"published",
+        @"imageURL" : @"image_url",
     };
 }
 
@@ -75,6 +86,7 @@ static NSDictionary *classMap;
     [encoder encodeObject:self.label forKey:@"label"];
     [encoder encodeObject:self.searchDetail forKey:@"search_detail"];
     [encoder encodeObject:self.isPublished forKey:@"published"];
+    [encoder encodeObject:self.imageURL forKey:@"image_url"];
 }
 
 - (id)initWithCoder:(NSCoder *)decoder
@@ -90,6 +102,7 @@ static NSDictionary *classMap;
     _label = [decoder decodeObjectForKey:@"label"];
     _searchDetail = [decoder decodeObjectForKey:@"search_detail"];
     _isPublished = [decoder decodeObjectForKey:@"published"];
+    _imageURL = [decoder decodeObjectForKey:@"image_url"];
 
     return self;
 }

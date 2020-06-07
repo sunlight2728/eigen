@@ -1,5 +1,6 @@
 #import "ARTermsAndConditionsView.h"
 
+#import "ARFonts.h"
 
 @implementation ARTermsAndConditionsView
 
@@ -22,14 +23,15 @@
 
 - (void)setup
 {
-    self.tintColor = [UIColor artsyMediumGrey];
+    UIColor *textColor = ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) ? [UIColor whiteColor] : [UIColor blackColor];
+    self.tintColor = textColor;
     self.editable = NO;
     self.scrollEnabled = NO;
     NSString *string = @"By creating your Artsy account you agree\nto our Terms of Use and Privacy Policy.";
     NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithString:string
                                                                                          attributes:@{
                                                                                              NSFontAttributeName : [UIFont serifFontWithSize:14],
-                                                                                             NSForegroundColorAttributeName : [UIColor artsyMediumGrey]
+                                                                                             NSForegroundColorAttributeName : textColor
                                                                                          }];
 
     NSRange termsRange = [attributedString.string rangeOfString:@"Terms of Use"];
@@ -59,7 +61,7 @@
     self.backgroundColor = [UIColor clearColor];
 }
 
-- (BOOL)textView:(UITextView *)textView shouldInteractWithURL:(NSURL *)URL inRange:(NSRange)characterRange
+- (BOOL)textView:(UITextView *)textView shouldInteractWithURL:(NSURL *)URL inRange:(NSRange)characterRange interaction:(UITextItemInteraction)interaction
 {
     NSString *path = [[URL.absoluteString componentsSeparatedByString:@"/"] lastObject];
     if ([path isEqualToString:@"terms"]) {

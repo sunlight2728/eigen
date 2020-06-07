@@ -2,5 +2,4 @@
 
 
 @interface ARSecureTextFieldWithPlaceholder : ARTextFieldWithPlaceholder
-
 @end

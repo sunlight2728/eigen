@@ -1,5 +1,6 @@
 #import "ARUserManager+Stubs.h"
 #import <OHHTTPStubs/OHHTTPStubs.h>
+#import <SDWebImage/SDWebImageManager.h>
 
 
 @implementation ARUserManager (Stubs)
@@ -51,6 +52,8 @@
            authenticationFailure:(void (^)(NSError *error))authFail
                   networkFailure:(void (^)(NSError *error))networkFailure
 {
+    [[SDWebImageManager sharedManager] cancelAll];
+
     __block BOOL done = NO;
     [[ARUserManager sharedManager]
         loginWithUsername:[ARUserManager stubUserEmail]
@@ -134,33 +137,29 @@
     }
 }
 
-+ (void)stubAndLoginWithTwitterToken
-{
++ (void)stubAndLoginWithAppleUID {
     [self stubAccessToken:[ARUserManager stubAccessToken] expiresIn:[ARUserManager stubAccessTokenExpiresIn]];
     [self stubMe:[ARUserManager stubUserID] email:[ARUserManager stubUserEmail] name:[ARUserManager stubUserName]];
-
-    [self stubbedLoginWithTwitterToken:@"twitter token"
-                                secret:@"twitter secret"
-                successWithCredentials:nil
-                               gotUser:nil
-                 authenticationFailure:nil
-                        networkFailure:nil];
+    [self stubbedLoginWithAppleUID:@"apple.uid"
+            successWithCredentials:nil
+                           gotUser:nil
+             authenticationFailure:nil
+                    networkFailure:nil];
 }
 
-
-+ (void)stubbedLoginWithTwitterToken:(NSString *)token
-                              secret:(NSString *)secret
-              successWithCredentials:(void (^)(NSString *, NSDate *))credentials
-                             gotUser:(void (^)(User *))success
-               authenticationFailure:(void (^)(NSError *error))authFail
-                      networkFailure:(void (^)(NSError *))networkFailure
++ (void)stubbedLoginWithAppleUID:(NSString *)appleUID
+               successWithCredentials:(void (^)(NSString *, NSDate *))credentials
+                              gotUser:(void (^)(User *))success
+                authenticationFailure:(void (^)(NSError *error))authFail
+                       networkFailure:(void (^)(NSError *))networkFailure
 {
     __block BOOL done = NO;
-    [[ARUserManager sharedManager] loginWithTwitterToken:token secret:secret
+    [[ARUserManager sharedManager]
+        loginWithAppleUID:appleUID
         successWithCredentials:^(NSString *accessToken, NSDate *tokenExpiryDate) {
-         if (credentials) {
-             credentials(accessToken, tokenExpiryDate);
-         }
+        if (credentials) {
+            credentials(accessToken, tokenExpiryDate);
+        }
         }
         gotUser:^(User *currentUser) {
          if (success) {
@@ -169,10 +168,10 @@
          done = YES;
         }
         authenticationFailure:^(NSError *error) {
-         if (authFail) {
-             authFail(error);
-         }
-         done = YES;
+        if (authFail) {
+            authFail(error);
+        }
+        done = YES;
         }
         networkFailure:^(NSError *error) {
          if (networkFailure) {

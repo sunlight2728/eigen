@@ -19,13 +19,16 @@ __block Artwork *artwork;
 describe(@"iPhone peek", ^{
     
     beforeEach(^{
+        [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/sets" withResponse:@{}];
+        [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/collection/saved-artwork/artworks" withResponse:@{}];
+
         artwork = [Artwork modelWithJSON:@{
-                    @"id" : @"artwork-id",
-                    @"title" : @"Artwork Title",
-                    @"artist" : @{
-                            @"name" : @"Jory Stiefel"
-                    }
-                  }];
+            @"id" : @"artwork-id",
+            @"title" : @"Artwork Title",
+            @"artist" : @{
+                @"name" : @"Jory Stiefel"
+            }
+        }];
     });
 
     it(@"preview view controller displays artwork",^{
@@ -35,20 +38,9 @@ describe(@"iPhone peek", ^{
     
         expect(vc).to.haveValidSnapshot();
     });
-    
-    it(@"shows only Share button for trial user", ^{
-    
-        AREmbeddedModelPreviewViewController *vc = [[AREmbeddedModelPreviewViewController alloc] initWithObject:artwork];
-        NSArray* previewActions = [vc previewActionItems];
-    
-        for (UIPreviewAction* item in previewActions) {
-            expect(item.title).notTo.startWith(@"Follow");
-            expect(item.title).notTo.startWith(@"Like");
-        }
-    });
-    
+
     it(@"shows favorite and follow buttons for logged in user", ^{
-    
+
         [ARUserManager stubAndLoginWithUsername];
         XCTAssert([User currentUser] != nil, @"Current user is nil even after stubbing.");
         

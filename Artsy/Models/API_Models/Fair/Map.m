@@ -1,5 +1,10 @@
+#import "Map.h"
 
+#import "MapFeature.h"
+#import "Image.h"
+#import "ARMacros.h"
 
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @interface Map ()
 @property (nonatomic, strong) Image *image;
@@ -11,8 +16,8 @@
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(Map.new, features) : @"map_features",
-        @keypath(Map.new, mapID) : @"id",
+        ar_keypath(Map.new, features) : @"map_features",
+        ar_keypath(Map.new, mapID) : @"id",
     };
 }
 

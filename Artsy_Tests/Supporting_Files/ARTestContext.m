@@ -1,5 +1,6 @@
 #import "ARTestContext.h"
 #import "UIDevice-Hardware.h"
+@import UIKit;
 
 static OCMockObject *ARDeviceMock;
 static OCMockObject *ARPartialScreenMock;
@@ -49,8 +50,12 @@ static OCMockObject *ARPartialScreenMock;
 
     ARPartialScreenMock = [OCMockObject partialMockForObject:UIScreen.mainScreen];
     NSValue *phoneSize = [NSValue valueWithCGRect:(CGRect)CGRectMake(0, 0, size.width, size.height)];
+    UITraitCollection *traitCollection = [UITraitCollection traitCollectionWithHorizontalSizeClass: (
+        isClassedAsPhone ? UIUserInterfaceSizeClassCompact : UIUserInterfaceSizeClassRegular
+    )];
 
     [[[ARPartialScreenMock stub] andReturnValue:phoneSize] bounds];
+    [[[ARPartialScreenMock stub] andReturn:traitCollection] traitCollection];
     [[[[ARPartialScreenMock stub] andReturnValue:phoneSize] ignoringNonObjectArgs] _applicationFrameForInterfaceOrientation:0 usingStatusbarHeight:0 ignoreStatusBar:NO];
 }
 
@@ -58,6 +63,45 @@ static OCMockObject *ARPartialScreenMock;
 {
     [ARPartialScreenMock stopMocking];
     [ARDeviceMock stopMocking];
+}
+
++ (OCMockObject *)freezeTime
+{
+    NSDate *now = [NSDate date];
+    return [self freezeTime:now];
+}
+
++ (OCMockObject *)freezeTime:(NSDate *)now
+{
+    id mock = [OCMockObject mockForClass:[NSDate class]];
+    [[[mock stub] andReturn:now] date];
+    return mock;
+}
+
++ (OCMockObject *)freezeSystemTime:(NSDate *)now
+{
+    id mock = [OCMockObject mockForClass:[ARSystemTime class]];
+    [[[mock stub] andReturn:now] date];
+    return mock;
+}
+
+static OCMockObject *dateMock;
+static OCMockObject *dateSystemMock;
+
++ (void)freezeTime:(NSDate *)now closure:(void (^)(void))closure
+{
+    dateMock = [self freezeTime:now];
+    dateSystemMock = [self freezeSystemTime:now];
+
+    @try {
+        closure();
+    } @catch (NSException *exception) {
+        NSLog(@"---------------------");
+        NSLog(@"A crash occured during frzen time, %@", exception);
+    } @finally {
+        dateSystemMock = nil;
+        dateMock = nil;
+    }
 }
 
 @end

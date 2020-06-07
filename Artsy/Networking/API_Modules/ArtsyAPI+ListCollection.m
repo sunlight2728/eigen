@@ -1,4 +1,9 @@
+#import "Artist.h"
 #import "ArtsyAPI+Private.h"
+#import "ARRouter.h"
+#import "Gene.h"
+
+#import "AFHTTPRequestOperation+JSON.h"
 
 
 @implementation ArtsyAPI (ListCollection)
@@ -9,10 +14,10 @@
     [self getCountForCollectionFromRequest:request success:success failure:failure];
 }
 
-+ (void)getGenesFromPersonalCollectionAtPage:(NSInteger)page success:(void (^)(NSArray *genes))success failure:(void (^)(NSError *error))failure
++ (AFHTTPRequestOperation *)getGenesFromPersonalCollectionAtPage:(NSInteger)page success:(void (^)(NSArray *genes))success failure:(void (^)(NSError *error))failure
 {
     NSURLRequest *request = [ARRouter newGenesFromPersonalCollectionAtPage:page];
-    [ArtsyAPI getRequest:request parseIntoAnArrayOfClass:[Gene class] withKey:@"gene" success:success failure:failure];
+    return [ArtsyAPI getRequest:request parseIntoAnArrayOfClass:[Gene class] withKey:@"gene" success:success failure:failure];
 }
 
 + (void)getArtistsFromPersonalCollectionCount:(void (^)(NSNumber *count))success failure:(void (^)(NSError *error))failure
@@ -21,10 +26,10 @@
     [self getCountForCollectionFromRequest:request success:success failure:failure];
 }
 
-+ (void)getArtistsFromPersonalCollectionAtPage:(NSInteger)page success:(void (^)(NSArray *artists))success failure:(void (^)(NSError *error))failure
++ (AFHTTPRequestOperation *)getArtistsFromPersonalCollectionAtPage:(NSInteger)page success:(void (^)(NSArray *artists))success failure:(void (^)(NSError *error))failure
 {
     NSURLRequest *request = [ARRouter newArtistsFromPersonalCollectionAtPage:page];
-    [ArtsyAPI getRequest:request parseIntoAnArrayOfClass:[Artist class] withKey:@"artist" success:success failure:failure];
+    return [ArtsyAPI getRequest:request parseIntoAnArrayOfClass:[Artist class] withKey:@"artist" success:success failure:failure];
 }
 
 + (void)getArtistsFromSampleAtPage:(NSInteger)page success:(void (^)(NSArray *artists))success failure:(void (^)(NSError *error))failure

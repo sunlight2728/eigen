@@ -1,3 +1,7 @@
+#import "ARScrollNavigationChief.h"
+
+#import "ARMacros.h"
+
 typedef NS_ENUM(NSInteger, ARScrollDirection) {
     ARScrollDirectionUp = -1,
     ARScrollDirectionNeutral,
@@ -33,6 +37,11 @@ static ARScrollNavigationChief *instance;
     return instance;
 }
 
++ (ARScrollNavigationChief *)getChief
+{
+    return [self chief];
+}
+
 - (id)init
 {
     self = [super init];
@@ -56,9 +65,9 @@ static ARScrollNavigationChief *instance;
         return;
     }
 
-    [self willChangeValueForKey:@keypath(self, allowsMenuButtons)];
+    [self willChangeValueForKey:ar_keypath(self, allowsMenuButtons)];
     _allowsMenuButtons = allowsMenuButtons;
-    [self didChangeValueForKey:@keypath(self, allowsMenuButtons)];
+    [self didChangeValueForKey:ar_keypath(self, allowsMenuButtons)];
 }
 
 - (void)setChiefsTargetScrollView:(UIScrollView *)view
@@ -146,7 +155,6 @@ static CGFloat UpwardScrollDistanceForShowing = 160;
         self.lastDirection = ARScrollDirectionUp;
     } else if (self.lastOffset == 0) {
         self.lastDirection = ARScrollDirectionDown;
-
     } else {
         CGFloat delta = offset - self.lastOffset;
         self.lastDirection = delta > 0 ? ARScrollDirectionDown : ARScrollDirectionUp;

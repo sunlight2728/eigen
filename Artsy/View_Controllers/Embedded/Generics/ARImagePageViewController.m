@@ -1,5 +1,10 @@
 #import "ARImagePageViewController.h"
 
+#import "ARFonts.h"
+#import "Image.h"
+
+#import "UIImageView+AsyncImageLoading.h"
+
 
 @interface ARImageViewController : UIViewController
 
@@ -27,8 +32,8 @@
     _images = [NSArray array];
     _imageContentMode = UIViewContentModeScaleAspectFit;
 
-    UIPageControl *pageControl = [UIPageControl appearanceWhenContainedIn:[ARImagePageViewController class], nil];
-    pageControl.pageIndicatorTintColor = [UIColor artsyMediumGrey];
+    UIPageControl *pageControl = [UIPageControl appearanceWhenContainedInInstancesOfClasses:@[[ARImagePageViewController class]]];
+    pageControl.pageIndicatorTintColor = [UIColor artsyGrayMedium];
     pageControl.currentPageIndicatorTintColor = [UIColor blackColor];
 
     return self;

@@ -12,43 +12,32 @@ NSString *const ARAnalyticsNotificationTapped = @"notification tapped";
 
 NSString *const ARAnalyticsFreshInstall = @"first user install";
 
-NSString *const ARAnalyticsTappedSignUp = @"Tapped sign up";
-NSString *const ARAnalyticsTappedLogIn = @"Tapped log in";
+NSString *const ARAnalyticsDeepLinkOpened = @"Deep link opened";
 
-NSString *const ARAnalyticsSignInEmail = @"Login with email";
-NSString *const ARAnalyticsSignInTwitter = @"Login with twitter";
-NSString *const ARAnalyticsSignInFacebook = @"Login with facebook";
-NSString *const ARAnalyticsSignInWebCredentials = @"Login with web credentials";
-NSString *const ARAnalyticsSignInError = @"Login errors";
-
-NSString *const ARAnalyticsSignUpEmail = @"Sign up with email";
-NSString *const ARAnalyticsSignUpTwitter = @"Connect with twitter";
-NSString *const ARAnalyticsSignUpFacebook = @"Connect with facebook";
 NSString *const ARAnalyticsAccountCreated = @"Created account";
-NSString *const ARAnalyticsSignUpError = @"Sign up errors";
-NSString *const ARAnalyticsTryWithoutAccount = @"Try without an account";
+NSString *const ARAnalyticsLoggedIn = @"Successfully logged in";
+NSString *const ARAnalyticsAuthError = @"Authentication error";
+
+NSString *const ARAnalyticsSlideshowStarted = @"Slideshow started";
+
+NSString *const ARAnalyticsOnboardingGetStarted = @"Tapped get started";
+NSString *const ARAnalyticsOnboardingConnectWithApple = @"Tapped connect with apple";
+NSString *const ARAnalyticsOnboardingConnectWithFacebook = @"Tapped connect with facebook";
+NSString *const ARAnalyticsOnboardingForgotPassword = @"Tapped forgot password";
+NSString *const ARAnalyticsOnboardingForgotPasswordSent = @"Successfully sent password reset link";
+NSString *const ARAnalyticsOnboardingAlreadyAccountBack = @"Tapped already have an account go back";
+NSString *const ARAnalyticsOnboardingTappedSearch = @"Tapped onboarding search";
+NSString *const ARAnalyticsOnboardingBudgetSelected = @"Budget selected";
 
 NSString *const ARAnalyticsStartedGalleryInquiry = @"Contact gallery";
 NSString *const ARAnalyticsStartedSpecialistInquiry = @"Ask a specialist";
 NSString *const ARAnalyticsSubmittedInquiry = @"Sent artwork inquiry";
 NSString *const ARAnalyticsInquiryError = @"Inquiry error";
 
-NSString *const ARAnalyticsSlideshowStarted = @"Slideshow started";
-
-NSString *const ARAnalyticsOnboardingStarted = @"user started onboarding";
-NSString *const ARAnalyticsOnboardingStartedCollectorLevel = @"user started collector level";
-NSString *const ARAnalyticsOnboardingCompletedCollectorLevel = @"user completed collector level";
-NSString *const ARAnalyticsOnboardingStartedPersonalize = @"user started personalize";
-NSString *const ARAnalyticsOnboardingSkippedPersonalize = @"user skipped personalize";
-NSString *const ARAnalyticsOnboardingCompletedPersonalize = @"user completed personalize";
-NSString *const ARAnalyticsOnboardingStartedPriceRange = @"user started price range";
-NSString *const ARAnalyticsOnboardingCompletedPriceRange = @"user completed price range";
-NSString *const ARAnalyticsOnboardingCompleted = @"user completed onboarding";
-
-NSString *const ARAnalyticsShowTrialSplash = @"user trial splash presented";
+NSString *const ARAnalyticsPushNotificationLocal = @"Artsy notification prompt response";
+NSString *const ARAnalyticsPushNotificationApple = @"Apple notification prompt response";
 
 NSString *const ARAnalyticsTappedHeroUnit = @"Tapped banner";
-NSString *const ARAnalyticsTappedMainNavigationItem = @"view main navigation item";
 
 NSString *const ARAnalyticsArtworkView = @"artwork view";
 NSString *const ARAnalyticsArtworkViewInRoom = @"View in room";
@@ -60,9 +49,6 @@ NSString *const ARAnalyticsTapPartnerName = @"Tapped gallery name";
 NSString *const ARAnalyticsPartnerShowView = @"partner show view";
 
 NSString *const ARAnalyticsShare = @"Share";
-
-NSString *const ARAnalyticsHearted = @"user hearted";
-NSString *const ARAnalyticsUnhearted = @"user unhearted";
 
 NSString *const ARAnalyticsProfileView = @"profile view";
 NSString *const ARAnalyticsPartnerFollow = @"Follow partner";
@@ -77,13 +63,12 @@ NSString *const ARAnalyticsFairFeaturedLinkSelected = @"fair selected featured l
 NSString *const ARAnalyticsFairPostSelected = @"fair selected post";
 NSString *const ARAnalyticsFairOverviewSelection = @"Tapped fair section from fair overview";
 
-NSString *const ARAnalyticsArtistView = @"artist view";
 NSString *const ARAnalyticsArtistFollow = @"Follow artist";
 NSString *const ARAnalyticsArtistUnfollow = @"Follow artist";
 NSString *const ARAnalyticsArtistTappedForSale = @"artist tapped for sale";
 
 NSString *const ARAnalyticsGeneView = @"gene view";
-NSString *const ARAnalyticsGeneFollow = @"gene favorite";
+NSString *const ARAnalyticsGeneFollow = @"Follow category";
 
 NSString *const ARAnalyticsShowMenu = @"user opened menu";
 NSString *const ARAnalyticsMenuTappedHome = @"user menu tapped home";
@@ -96,8 +81,6 @@ NSString *const ARAnalyticsSearchClosed = @"Close search screen";
 NSString *const ARAnalyticsSearchCleared = @"Cleared input in search screen";
 NSString *const ARAnalyticsSearchStartedQuery = @"Searched";
 NSString *const ARAnalyticsSearchItemSelected = @"Selected result from search screen";
-NSString *const ARAnalyticsFairSearch = @"Fair search";
-NSString *const ARAnalyticsFairSearchItemSelected = @"Selected item from fair search";
 
 NSString *const ARAnalyticsTimePerSession = @"app session time";
 
@@ -122,4 +105,12 @@ NSString *const ARAdjustSentArtworkInquiry = @"duxtlx";
 NSString *const ARAdjustFirstUserInstall = @"kju96h";
 NSString *const ARAdjustTappedBidButton = @"w5e24e";
 
+NSInteger const ARNavButtonNotificationsTag = (NSInteger)&ARNavButtonNotificationsTag;
 
+NSString *const ARAnalyticsAuctionBidButtonTapped = @"Tapped Register To Bid";
+NSString *const ARAnalyticsArtworksRefineTapped = @"Tapped Artworks Refine";
+NSString *const ARAnalyticsAuctionContactTapped = @"Tapped Auction Contact";
+NSString *const ARAnalyticsAuctionBuyersPremiumTapped = @"Tapped Auction Show Buyers Premium";
+NSString *const ARAnalyticsTappedApplyRefine = @"Tapped Apply Refine";
+
+NSString *const ARAnalyticsGraphQLResponseError = @"GraphQL Response Error";

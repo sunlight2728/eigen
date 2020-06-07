@@ -1,5 +1,7 @@
 #import "ARAuthProviders.h"
 #import "ARNetworkConstants.h"
+#import "ARLogger.h"
+
 #import <AFOAuth1Client/AFOAuth1Client.h>
 #import <AFOAuth1Client/AFOAuth1Token.h>
 #import <FBSDKLoginKit/FBSDKLoginKit.h>
@@ -9,40 +11,14 @@
 #import "ARAnalyticsConstants.h"
 #import <Keys/ArtsyKeys.h>
 
-
 @implementation ARAuthProviders
-
-+ (void)getReverseAuthTokenForTwitter:(void (^)(NSString *token, NSString *secret))success failure:(void (^)(NSError *))failure
-{
-    NSParameterAssert(success);
-    AFOAuth1Client *client = nil;
-    client = [[AFOAuth1Client alloc] initWithBaseURL:[NSURL URLWithString:@"https://api.twitter.com/"]
-                                                 key:[ArtsyKeys new].artsyTwitterKey
-                                              secret:[ArtsyKeys new].artsyTwitterSecret];
-
-
-    [client authorizeUsingOAuthWithRequestTokenURLString:@"/oauth/request_token"
-        userAuthorizationURLString:@"/oauth/authorize"
-        callbackURL:[NSURL URLWithString:ARTwitterCallbackPath]
-        accessTokenURLString:@"/oauth/access_token"
-        accessMethod:@"POST"
-        scope:nil
-        success:^(AFOAuth1Token *accessToken, id responseObject) {
-            success(accessToken.key, accessToken.secret);
-        }
-        failure:^(NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-        }];
-}
 
 + (void)getTokenForFacebook:(void (^)(NSString *token, NSString *email, NSString *name))success failure:(void (^)(NSError *error))failure
 {
     NSParameterAssert(success);
 
     FBSDKLoginManager *login = [[FBSDKLoginManager alloc] init];
-    [login logInWithReadPermissions:@[ @"email" ] handler:^(FBSDKLoginManagerLoginResult *result, NSError *error) {
+    [login logInWithReadPermissions:@[ @"email" ] fromViewController:nil handler:^(FBSDKLoginManagerLoginResult *result, NSError *error) {
         if (error) {
             ARErrorLog(@"Failed to log in to Facebook: %@", error.localizedDescription);
             failure(error);
@@ -56,13 +32,15 @@
           failure(error);
 
         } else {
-            FBSDKGraphRequest *request = [[FBSDKGraphRequest alloc] initWithGraphPath:@"me" parameters:nil];
+            FBSDKGraphRequest *request = [[FBSDKGraphRequest alloc] initWithGraphPath:@"me?fields=name,id,email" parameters:nil];
+            
+            // We need to disable FB's in-house error reporting so we can show our own
+            [request setGraphErrorRecoveryDisabled:YES];
             [request startWithCompletionHandler:^(FBSDKGraphRequestConnection *connection, NSDictionary *user, NSError *error) {
                 if (!error) {
-                    
                     NSString *email = user[@"email"];
                     NSString *name = user[@"name"];
-                    success(result.token.tokenString, email, name);
+                    success([FBSDKAccessToken currentAccessToken].tokenString, email, name);
                 } else {
                     ARErrorLog(@"Couldn't get user info from Facebook");
                     failure(error);
@@ -70,6 +48,16 @@
             }];
         }
     }];
+}
+
++ (void)getTokenForAppleWithDelegate:(id <ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding>)delegate {
+    ASAuthorizationAppleIDProvider *appleIDProvider = [[ASAuthorizationAppleIDProvider alloc] init];
+    ASAuthorizationAppleIDRequest *request = [appleIDProvider createRequest];
+    [request setRequestedScopes:@[ASAuthorizationScopeFullName, ASAuthorizationScopeEmail]];
+    ASAuthorizationController *authController = [[ASAuthorizationController alloc] initWithAuthorizationRequests: @[request]];
+    [authController setDelegate: delegate];
+    [authController setPresentationContextProvider: delegate];
+    [authController performRequests];
 }
 
 @end

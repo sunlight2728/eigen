@@ -1,16 +1,21 @@
 #import "AROnboardingViewController.h"
 
-@class AROnboardingGeneTableController;
-@class AROnboardingArtistTableController;
+@class AROnboardingPersonalizeTableViewController;
 
 
 @interface ARPersonalizeViewController : UIViewController
 
-- (instancetype)initWithGenes:(NSArray *)genes;
+- (instancetype)initForStage:(AROnboardingStage)stage;
 @property (nonatomic, weak) id<AROnboardingStepsDelegate> delegate;
 
+@property (nonatomic, assign, readonly) AROnboardingStage state;
+
 @property (nonatomic, assign, readonly) NSInteger followedThisSession;
-@property (nonatomic, readonly) AROnboardingGeneTableController *geneController;
-@property (nonatomic, readonly) AROnboardingArtistTableController *artistController;
+@property (nonatomic, strong, readonly) AROnboardingPersonalizeTableViewController *searchResultsTable;
+
+- (void)updateKeyboardFrame:(CGRect)keyboardFrame;
+- (void)passwordResetSent;
+- (void)passwordResetError:(NSString *)message;
+- (void)showErrorWithMessage:(NSString *)errorMessage;
 
 @end

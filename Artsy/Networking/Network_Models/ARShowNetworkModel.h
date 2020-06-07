@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 
+@class Fair, PartnerShow;
 
 @interface ARShowNetworkModel : NSObject
 
@@ -9,8 +10,6 @@
 @property (nonatomic, strong, readonly) PartnerShow *show;
 
 - (void)getShowInfo:(void (^)(PartnerShow *show))success failure:(void (^)(NSError *error))failure;
-
-- (void)getFairMaps:(void (^)(NSArray *maps))success;
 
 - (void)getArtworksAtPage:(NSInteger)page success:(void (^)(NSArray *artworks))success failure:(void (^)(NSError *error))failure;
 

@@ -1,8 +1,19 @@
 #import "ARBrowseCategoriesViewController.h"
+
+#import "ArtsyAPI+Genes.h"
+#import "ARAppConstants.h"
 #import "UIViewController+FullScreenLoading.h"
 #import "ORStackView+ArtsyViews.h"
 #import "ARBrowseFeaturedLinksCollectionViewController.h"
+#import "FeaturedLink.h"
+#import "OrderedSet.h"
+#import "ARSwitchBoard+Eigen.h"
+#import "ARScrollNavigationChief.h"
+#import "ARLogger.h"
+#import "ARTopMenuViewController.h"
+#import "UIViewController+TopMenuViewController.h"
 
+#import "UIDevice-Hardware.h"
 
 @interface ARBrowseCategoriesViewController () <ARBrowseFeaturedLinksCollectionViewControllerDelegate>
 @end
@@ -88,7 +99,7 @@
 {
     UIViewController *viewController = [ARSwitchBoard.sharedInstance loadPath:featuredLink.href];
     if (viewController) {
-        [self.navigationController pushViewController:viewController animated:ARPerformWorkAsynchronously];
+        [self.ar_TopMenuViewController pushViewController:viewController animated:ARPerformWorkAsynchronously];
     }
 }
 

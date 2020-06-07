@@ -1,18 +1,20 @@
-NSString *const ARBaseDesktopWebURL = @"https://www.artsy.net";
-NSString *const ARBaseMobileWebURL = @"https://m.artsy.net";
-NSString *const ARBaseApiURL = @"https://api.artsy.net";
+#import <Foundation/Foundation.h>
 
-NSString *const ARStagingBaseWebURL = @"https://staging.artsy.net";
-NSString *const ARStagingBaseMobileWebURL = @"http://m-staging.artsy.net";
-NSString *const ARStagingBaseApiURL = @"https://stagingapi.artsy.net";
+NSString *const ARBaseWebURL = @"https://www.artsy.net";
+NSString *const ARBaseDeprecatedMobileWebURL = @"https://m.artsy.net";
+NSString *const ARStagingBaseDeprecatedMobileWebURL = @"https://m-staging.artsy.net";
+NSString *const ARBaseApiURL = @"https://api.artsy.net";
+NSString *const ARBaseMetaphysicsApiURL = @"https://metaphysics-production.artsy.net";
+NSString *const ARCausalitySocketURL = @"wss://causality.artsy.net";
 
 NSString *const ARPersonalizePath = @"personalize";
 
 NSString *const ARTwitterCallbackPath = @"artsy://twitter-callback";
 
-NSString *const ARArtsyXCallbackUrlScheme = @"artsy-x-callback-url";
 NSString *const ARAuthHeader = @"X-Access-Token";
 NSString *const ARXappHeader = @"X-Xapp-Token";
+NSString *const AREigenLocalTemporaryUserIDHeader = @"X-Eigen-Trial-ID";
+
 NSString *const ARTotalHeader = @"X-Total-Count";
 
 NSString *const AROAuthURL = @"/oauth2/access_token";
@@ -36,8 +38,11 @@ NSString *const ARAddArtworkToFavoritesURLFormat = @"/api/v1/collection/saved-ar
 NSString *const ARFavoritesURL = @"/api/v1/collection/saved-artwork/artworks";
 NSString *const ARSalesForArtworkURL = @"/api/v1/related/sales";
 NSString *const ARMyBiddersURL = @"/api/v1/me/bidders";
+NSString *const ARMyLotStandingsURL = @"/api/v1/me/lot_standings";
 NSString *const ARBidderPositionsForSaleAndArtworkURL = @"/api/v1/me/bidder_positions";
 NSString *const ARSaleArtworkForSaleAndArtworkURLFormat = @"/api/v1/sale/%@/sale_artwork/%@";
+NSString *const ARSaleURLFormat = @"/api/v1/sale/%@";
+NSString *const ARLiveSaleStateFormat = @"%@/state/%@";
 NSString *const ARSaleArtworksURLFormat = @"/api/v1/sale/%@/sale_artworks";
 NSString *const ARArtworkFairsURLFormat = @"/api/v1/related/fairs";
 
@@ -46,7 +51,9 @@ NSString *const ARRelatedShowsURL = @"/api/v1/related/shows";
 NSString *const ARArtistArtworksURLFormat = @"/api/v1/artist/%@/artworks";
 NSString *const ARArtistInformationURLFormat = @"/api/v1/artist/%@";
 
-NSString *const ARRelatedArtistsURL = @"/api/v1/related/artists";
+NSString *const ARRelatedArtistsURL = @"/api/v1/me/suggested/artists";
+NSString *const ARRelatedGeneURLFormat = @"/api/v1/gene/%@/similar";
+NSString *const ARPopularArtistsURL = @"/api/v1/artists/popular";
 NSString *const ARSampleArtistsURL = @"/api/v1/artists/sample";
 
 NSString *const ARFollowArtistURL = @"/api/v1/me/follow/artist";
@@ -73,27 +80,28 @@ NSString *const ARShowFeedURL = @"/api/v1/shows/feed";
 NSString *const ARShowInformationURLFormat = @"/api/v1/show/%@";
 NSString *const ARShowsURL = @"/api/v1/shows";
 
-NSString *const ARNewSearchURL = @"/api/v1/match";
+NSString *const ARNewSearchURL = @"/api/v1/match/suggest";
 NSString *const ARNewArtistSearchURL = @"/api/v1/match/artists";
+NSString *const ARNewGeneSearchURL = @"/api/v1/match/genes";
 
 NSString *const ARSiteHeroUnitsURL = @"/api/v1/site_hero_units";
 
 NSString *const AROnDutyRepresentativesURL = @"/api/v1/admins/available_representatives";
 NSString *const ARArtworkInquiryRequestURL = @"/api/v1/me/artwork_inquiry_request";
 
-NSString *const ARGeneArtworksURLFormat = @"/api/v1/search/filtered/gene/%@";
+NSString *const ARGeneArtworksURL = @"/api/v1/filter/artworks";
 NSString *const ARShowArtworksURLFormat = @"/api/v1/partner/%@/show/%@/artworks";
 NSString *const ARShowImagesURLFormat = @"/api/v1/partner_show/%@/images";
 
 NSString *const AROrderedSetsURL = @"/api/v1/sets";
 NSString *const AROrderedSetItemsURLFormat = @"/api/v1/set/%@/items";
 
-NSString *const ARSuggestedHomepageArtworks = @"/api/v1/me/suggested/artworks/homepage";
 NSString *const ARNotificationsURL = @"/api/v1/me/notifications";
 
 NSString *const ARSiteFeaturesURL = @"/api/v1/site_features/";
 
 NSString *const ARNewDeviceURL = @"/api/v1/device";
+NSString *const ARDeleteDeviceURL = @"/api/v1/device/%@";
 NSString *const ARSiteUpURL = @"/api/v1/system/up";
 
 NSString *const ARProfilePostsURLFormat = @"/api/v1/profile/%@/posts";
@@ -108,3 +116,4 @@ NSString *const ARShowsFeaturingArtistsURLFormat = @"/api/v1/fair/%@/shows";
 NSString *const ARSystemTimeURL = @"/api/v1/system/time";
 
 NSString *const ARCreatePendingOrderURL = @"/api/v1/me/order/pending/items";
+NSString *const ARPageURLFormat = @"/api/v1/page/%@";

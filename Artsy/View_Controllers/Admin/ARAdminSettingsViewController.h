@@ -1,7 +1,5 @@
-#import <ARGenericTableViewController/ARGenericTableViewController.h>
-#import <MessageUI/MessageUI.h>
+#import "ARAdminTableViewController.h"
 
-
-@interface ARAdminSettingsViewController : ARGenericTableViewController <MFMailComposeViewControllerDelegate>
+@interface ARAdminSettingsViewController : ARAdminTableViewController
 
 @end

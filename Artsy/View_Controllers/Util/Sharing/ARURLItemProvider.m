@@ -1,13 +1,13 @@
 #import "ARURLItemProvider.h"
 #import "ARFileUtils.h"
-#import "ARRouter+Private.h"
+#import "ARRouter.h"
 
 
 @implementation ARURLItemProvider
 
 - (instancetype)initWithMessage:(NSString *)message path:(NSString *)path thumbnailImageURL:(NSURL *)thumbnailImageURL
 {
-    NSURL *shareableURL = [NSURL URLWithString:path relativeToURL:[ARRouter baseDesktopWebURL]];
+    NSURL *shareableURL = [NSURL URLWithString:path relativeToURL:[ARRouter baseWebURL]];
 
     // sharing the URL built with URLWithString:relativeToURL via AirDrop: fails with a declined error message
     self = [super initWithPlaceholderItem:[NSURL URLWithString:shareableURL.absoluteString]];
@@ -23,7 +23,7 @@
       thumbnailImageForActivityType:(NSString *)activityType
                       suggestedSize:(CGSize)size
 {
-    if ([self.activityType isEqualToString:UIActivityTypeAirDrop]) {
+    if ([activityType isEqualToString:UIActivityTypeAirDrop]) {
         return [UIImage imageNamed:@"AppIcon_120"];
     }
 

@@ -2,10 +2,12 @@
 
 extern NSString *const ARUserSessionStartedNotification;
 
+@class User;
 
 @interface ARUserManager : NSObject
 
 + (ARUserManager *)sharedManager;
++ (void)logoutAndExit;
 + (void)logout;
 + (void)logoutAndSetUseStaging:(BOOL)useStaging;
 + (void)clearUserData;
@@ -16,22 +18,30 @@ extern NSString *const ARUserSessionStartedNotification;
 - (User *)currentUser;
 - (void)storeUserData;
 
-@property (nonatomic, strong) NSString *trialUserName;
-@property (nonatomic, strong) NSString *trialUserEmail;
-@property (nonatomic, strong, readonly) NSString *trialUserUUID;
+@property (nonatomic, readonly) NSString *appleEmail;
+@property (nonatomic, readonly) NSString *appleDisplayName;
+
+- (void)storeAppleDisplayName:(NSString *)displayName email:(NSString *)email;
+- (void)resetAppleStoredCredentials;
+
+@property (nonatomic, strong) NSString *localTemporaryUserName;
+@property (nonatomic, strong) NSString *localTemporaryUserEmail;
+@property (nonatomic, strong, readonly) NSString *localTemporaryUserUUID;
 
 @property (nonatomic, strong) NSString *userAuthenticationToken;
 
-- (void)resetTrialUserUUID;
+- (void)resetLocalTemporaryUserUUID;
 
 - (BOOL)hasExistingAccount;
 - (BOOL)hasValidAuthenticationToken;
 - (BOOL)hasValidXAppToken;
 
-- (void)disableSharedWebCredentials;
-- (void)tryLoginWithSharedWebCredentials:(void (^)(NSError *error))completion;
+/// Gets a new auth token by using the user/pass from keychain
+- (void)tryReLoginWithKeychainCredentials:(void (^)(User *currentUser))success authenticationFailure:(void (^)(NSError *error))authError;
 
-- (void)startTrial:(void (^)())callback failure:(void (^)(NSError *error))failure;
+- (void)disableSharedWebCredentials;
+- (void)tryStoreSavedCredentialsToWebKeychain;
+- (void)tryLoginWithSharedWebCredentials:(void (^)(NSError *error))completion;
 
 - (void)loginWithUsername:(NSString *)username
                  password:(NSString *)password
@@ -54,12 +64,11 @@ extern NSString *const ARUserSessionStartedNotification;
          authenticationFailure:(void (^)(NSError *error))authenticationFailure
                 networkFailure:(void (^)(NSError *error))networkFailure;
 
-- (void)loginWithTwitterToken:(NSString *)token
-                       secret:(NSString *)secret
-       successWithCredentials:(void (^)(NSString *accessToken, NSDate *expirationDate))credentials
-                      gotUser:(void (^)(User *currentUser))gotUser
-        authenticationFailure:(void (^)(NSError *error))authenticationFailure
-               networkFailure:(void (^)(NSError *error))networkFailure;
+- (void)loginWithAppleUID:(NSString *)appleUID
+     successWithCredentials:(void (^)(NSString *accessToken, NSDate *expirationDate))credentials
+                    gotUser:(void (^)(User *currentUser))gotUser
+      authenticationFailure:(void (^)(NSError *error))authenticationFailure
+             networkFailure:(void (^)(NSError *error))networkFailure;
 
 - (void)createUserWithName:(NSString *)name
                      email:(NSString *)email
@@ -80,12 +89,11 @@ extern NSString *const ARUserSessionStartedNotification;
                                success:(void (^)(User *user))success
                                failure:(void (^)(NSError *error, id JSON))failure;
 
-- (void)createUserViaTwitterWithToken:(NSString *)token
-                               secret:(NSString *)secret
-                                email:(NSString *)email
-                                 name:(NSString *)name
-                              success:(void (^)(User *user))success
-                              failure:(void (^)(NSError *error, id JSON))failure;
+- (void)createUserViaAppleWithUID:(NSString *)appleUID
+                              email:(NSString *)email
+                               name:(NSString *)name
+                            success:(void (^)(User *user))success
+                            failure:(void (^)(NSError *error, id JSON))failure;
 
 - (void)sendPasswordResetForEmail:(NSString *)email
                           success:(void (^)(void))success

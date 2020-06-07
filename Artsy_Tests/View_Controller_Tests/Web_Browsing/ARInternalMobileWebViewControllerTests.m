@@ -3,8 +3,8 @@
 #import "ARUserManager+Stubs.h"
 #import "ARUserManager.h"
 #import "ARNetworkConstants.h"
-#import "ARTrialController.h"
 #import "ARSwitchBoard.h"
+#import "ARSwitchboard+Eigen.h"
 #import "ARInternalShareValidator.h"
 
 static WKNavigationAction *StubNavActionForRequest(NSURLRequest *request, WKNavigationType type)
@@ -55,18 +55,23 @@ describe(@"initWithURL", ^{
         });
 
         it(@"rewrites the scheme", ^{
-            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://m.artsy.net/foo/bar"]];
-            expect([controller currentURL].absoluteString).to.equal(@"https://m.artsy.net/foo/bar");
+            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://www.artsy.net/foo/bar"]];
+            expect([controller currentURL].absoluteString).to.equal(@"https://www.artsy.net/foo/bar");
         });
 
         it(@"with an artsy.net url", ^{
-            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://artsy.net/foo/bar"]];
-            expect([controller currentURL].absoluteString).to.equal(@"https://m.artsy.net/foo/bar");
+            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"https://artsy.net/foo/bar"]];
+            expect([controller currentURL].absoluteString).to.equal(@"https://www.artsy.net/foo/bar");
+        });
+        
+        it(@"with an m.artsy.net url", ^{
+            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"https://m.artsy.net/foo/bar"]];
+            expect([controller currentURL].absoluteString).to.equal(@"https://www.artsy.net/foo/bar");
         });
 
         it(@"with a relative url", ^{
             ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"/foo/bar"]];
-            expect([controller currentURL].absoluteString).to.equal(@"https://m.artsy.net/foo/bar");
+            expect([controller currentURL].absoluteString).to.equal(@"https://www.artsy.net/foo/bar");
         });
 
         it(@"with an external artsy.net url", ^{
@@ -102,18 +107,23 @@ describe(@"initWithURL", ^{
         });
 
         it(@"rewrites the scheme", ^{
-            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"https://m-staging.artsy.net/foo/bar"]];
-            expect([controller currentURL].absoluteString).to.equal(@"http://m-staging.artsy.net/foo/bar");
+            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://staging.artsy.net/foo/bar"]];
+            expect([controller currentURL].absoluteString).to.equal(@"https://staging.artsy.net/foo/bar");
         });
 
         it(@"with an artsy.net url", ^{
-            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://staging.artsy.net/foo/bar"]];
-            expect([controller currentURL].absoluteString).to.equal(@"http://m-staging.artsy.net/foo/bar");
+            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"https://artsy.net/foo/bar"]];
+            expect([controller currentURL].absoluteString).to.equal(@"https://staging.artsy.net/foo/bar");
+        });
+
+        it(@"with an m-staging.artsy.net url", ^{
+            ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"https://m-staging.artsy.net/foo/bar"]];
+            expect([controller currentURL].absoluteString).to.equal(@"https://staging.artsy.net/foo/bar");
         });
 
         it(@"with a relative url", ^{
             ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"/foo/bar"]];
-            expect([controller currentURL].absoluteString).to.equal(@"http://m-staging.artsy.net/foo/bar");
+            expect([controller currentURL].absoluteString).to.equal(@"https://staging.artsy.net/foo/bar");
         });
 
         it(@"with an external artsy.net url", ^{
@@ -138,7 +148,7 @@ describe(@"authenticated", ^{
     });
     
     it(@"injects an X-Auth-Token header in requests", ^{
-        ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://m.artsy.net/"]];
+        ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://www.artsy.net/"]];
         NSURLRequest *request = [controller requestWithURL:controller.currentURL];
         expect([request valueForHTTPHeaderField:ARAuthHeader]).toNot.beNil();
     });
@@ -147,37 +157,6 @@ describe(@"authenticated", ^{
         ARInternalMobileWebViewController *controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@"http://example.com/"]];
         NSURLRequest *request = [controller requestWithURL:controller.currentURL];
         expect([request valueForHTTPHeaderField:ARAuthHeader]).to.beNil();
-    });
-
-    describe(@"shouldStartLoadWithRequest:navigationType", ^{
-        __block ARInternalMobileWebViewController *controller;
-        
-        beforeEach(^{
-            controller = [[ARInternalMobileWebViewController alloc] initWithURL:[NSURL URLWithString:@""]];
-        });
-        
-        it(@"doesn't show the website's trial login/signup view on a request to log_in", ^{
-
-            NSURLRequest *request = [controller requestWithURL:[NSURL URLWithString:@"https://m.artsy.net/log_in"]];
-            id mockUser = [OCMockObject mockForClass:[User class]];
-            [[[mockUser stub] andReturnValue:OCMOCK_VALUE(NO)] isTrialUser];
-
-            id mock = [OCMockObject partialMockForObject:[ARTrialController instance]];
-            [[mock reject] presentTrialWithContext:ARTrialContextNotTrial success:[OCMArg any]];
-
-            id switchboardMock = [OCMockObject partialMockForObject:ARSwitchBoard.sharedInstance];
-            [[switchboardMock reject] loadURL:[OCMArg any] fair:[OCMArg any]];
-
-            id action = StubNavActionForRequest(request, WKNavigationTypeOther);
-            expect([controller shouldLoadNavigationAction:action]).to.equal(WKNavigationActionPolicyCancel);
-
-            [mock verify];
-            [switchboardMock verify];
-
-            [mockUser stopMocking];
-            [switchboardMock stopMocking];
-            [mock stopMocking];
-        });
     });
 });
 
@@ -231,50 +210,6 @@ describe(@"unauthenticated", ^{
 
             id action = StubNavActionForRequest(request, WKNavigationTypeLinkActivated);
             expect([controller shouldLoadNavigationAction:action]).to.equal(WKNavigationActionPolicyCancel);
-        });
-
-        it(@"shows a trial login/signup view on a request to log_in", ^{
-            NSURLRequest *request = [controller requestWithURL:[NSURL URLWithString:@"http://m.artsy.net/log_in"]];
-            id mockUser = [OCMockObject mockForClass:[User class]];
-            [[[mockUser stub] andReturnValue:OCMOCK_VALUE(YES)] isTrialUser];
-
-            id mock = [OCMockObject partialMockForObject:[ARTrialController instance]];
-            [[mock expect] presentTrialWithContext:ARTrialContextNotTrial success:[OCMArg any]];
-
-            id switchboardMock = [OCMockObject partialMockForObject:ARSwitchBoard.sharedInstance];
-            [[switchboardMock reject] loadURL:[OCMArg any] fair:[OCMArg any]];
-
-            id action = StubNavActionForRequest(request, WKNavigationTypeOther);
-            expect([controller shouldLoadNavigationAction:action]).to.equal(WKNavigationActionPolicyCancel);
-
-            [mock verify];
-            [switchboardMock verify];
-
-            [mockUser stopMocking];
-            [switchboardMock stopMocking];
-            [mock stopMocking];
-        });
-
-        it(@"shows a trial login/signup view on a request to sign_up", ^{
-            NSURLRequest *request = [controller requestWithURL:[NSURL URLWithString:@"http://m.artsy.net/sign_up"]];
-            id mockUser = [OCMockObject mockForClass:[User class]];
-            [[[mockUser stub] andReturnValue:OCMOCK_VALUE(YES)] isTrialUser];
-
-            id mock = [OCMockObject partialMockForObject:[ARTrialController instance]];
-            [[mock expect] presentTrialWithContext:ARTrialContextNotTrial success:[OCMArg any]];
-
-            id switchboardMock = [OCMockObject partialMockForObject:ARSwitchBoard.sharedInstance];
-            [[switchboardMock reject] loadURL:[OCMArg any] fair:[OCMArg any]];
-
-            id action = StubNavActionForRequest(request, WKNavigationTypeOther);
-            expect([controller shouldLoadNavigationAction:action]).to.beFalsy();
-
-            [mock verify];
-            [switchboardMock verify];
-
-            [mockUser stopMocking];
-            [switchboardMock stopMocking];
-            [mock stopMocking];
         });
     });
 });

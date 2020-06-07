@@ -1,79 +1,70 @@
+#import <UIKit/UIKit.h>
+
 #import "ARFairAwareObject.h"
 
+@class Artwork;
 @class ARPostFeedItem;
 @class ARFollowArtistFeedItem;
+@class Fair;
+@class Gene;
+@class PartnerShow;
 
 // View Controller Forward Declarations
 
-@class ARArtworkSetViewController;
-@class ARShowViewController;
-@class ARFairArtistViewController;
-@class ARArtistViewController;
-@class ARArtworkInfoViewController;
+@class ARArtworkComponentViewController;
 @class ARAuctionArtworkResultsViewController;
-@class ARFairMapViewController;
-@class ARGeneViewController;
 @class ARUserSettingsViewController;
+@class Aerodramus;
 
 /**
  The Switchboard is the internal API for loading different native views
-  it does this mostly by using either an internal Sinatra like-router, or
-  by directly passing the message on to whichever ARNavigationContainer compliant
-  object we want.
+  it does this mostly by using either an internal Sinatra like-router.
 */
+
+NS_ASSUME_NONNULL_BEGIN
 
 
 @interface ARSwitchBoard : NSObject
 
+/// A shared instance object
 + (instancetype)sharedInstance;
 
-/// Provide a simple API to load an ArtworkVC from a lot of different inputs
-- (ARArtworkSetViewController *)loadArtworkSet:(NSArray *)artworkSet inFair:(Fair *)fair atIndex:(NSInteger)index;
-- (ARArtworkSetViewController *)loadArtwork:(Artwork *)artwork inFair:(Fair *)fair;
-- (ARArtworkSetViewController *)loadArtworkWithID:(NSString *)artworkID inFair:(Fair *)fair;
+///  Allow teardown for logout
++ (void)teardownSharedInstance;
 
-- (UIViewController *)loadBidUIForArtwork:(NSString *)artworkID inSale:(NSString *)saleID;
+/// Allows other objects to hook into the switchboard
+- (void)registerPathCallbackAtPath:(NSString *)path callback:(id _Nullable (^)(NSDictionary *_Nullable parameters))callback;
 
-/// Load the auction results for an artwork on to the stack
-- (ARAuctionArtworkResultsViewController *)loadAuctionResultsForArtwork:(Artwork *)artwork;
-- (ARArtworkInfoViewController *)loadMoreInfoForArtwork:(Artwork *)artwork;
-
-/// Load a Map VC
-- (ARFairMapViewController *)loadMapInFair:(Fair *)fair;
-- (ARFairMapViewController *)loadMapInFair:(Fair *)fair title:(NSString *)title selectedPartnerShows:(NSArray *)selectedPartnerShows;
-
-- (ARArtistViewController *)loadArtistWithID:(NSString *)artistID;
-- (UIViewController<ARFairAwareObject> *)loadArtistWithID:(NSString *)artistID inFair:(Fair *)fair;
-
-/// Load a Partner Page in Martsy
-- (UIViewController *)loadPartnerWithID:(NSString *)partnerID;
-
-/// Load a Profile. Used to separate profiles with a fair from regular profiles.
-- (UIViewController *)routeProfileWithID:(NSString *)profileID;
-
-/// Load a Gene
-- (ARGeneViewController *)loadGene:(Gene *)gene;
-- (ARGeneViewController *)loadGeneWithID:(NSString *)geneID;
-
-/// Load a fair booth
-- (ARShowViewController *)loadShow:(PartnerShow *)show fair:(Fair *)fair;
-- (ARShowViewController *)loadShow:(PartnerShow *)show;
-- (ARShowViewController *)loadShowWithID:(NSString *)showID;
-- (ARShowViewController *)loadShowWithID:(NSString *)showID fair:(Fair *)fair;
+/// Allows other objects to hook into the switchboard at the URL level
+- (void)registerPathCallbackForDomain:(NSString *)domain callback:(id _Nullable (^)(NSURL *url))callback;
 
 /// Load a path relative to the baseURL through the router
 - (UIViewController *)loadPath:(NSString *)path;
-- (UIViewController *)loadPath:(NSString *)path fair:(Fair *)fair;
+
+///  Load a path relative to the baseURL with an optional fair object
+- (UIViewController *)loadPath:(NSString *)path fair:(Fair *_Nullable)fair;
 
 /// Send an URL through the router
-- (UIViewController *)loadURL:(NSURL *)url;
-- (UIViewController *)loadURL:(NSURL *)url fair:(Fair *)fair;
+- (UIViewController *_Nullable)loadURL:(NSURL *)url;
 
-- (ARUserSettingsViewController *)loadUserSettings;
+/// Send an URL through the router with an optional fair object
+- (UIViewController *_Nullable)loadURL:(NSURL *)url fair:(Fair *_Nullable)fair;
 
+/// Can the Switchboard handle a URL?
+- (BOOL)canRouteURL:(NSURL *)url;
+
+/// Converts a path into a full URL based on staging/prod
 - (NSURL *)resolveRelativeUrl:(NSString *)path;
 
-/// Buy artwork
-- (UIViewController *)loadOrderUIForID:(NSString *)orderID resumeToken:(NSString *)resumeToken;
+/// Shows the View Controller in Eigen
+- (void)presentViewController:(UIViewController *)controller;
+
+/// Shows an alert asking the user if they want to open in Safari, or some other app
+- (void)openURLInExternalService:(NSURL *)url;
+
+/// The Artsy echo instance for feature flags, and url routing etc
+@property (nonatomic, readonly, strong) Aerodramus *echo;
 
 @end
+
+NS_ASSUME_NONNULL_END

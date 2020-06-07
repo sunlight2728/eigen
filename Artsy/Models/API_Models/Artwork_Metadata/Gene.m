@@ -1,4 +1,10 @@
+#import "ArtsyAPI+Artworks.h"
+#import "ArtsyAPI+Following.h"
+#import "ArtsyAPI+Genes.h"
 #import "ARSpotlight.h"
+#import "User.h"
+#import "Gene.h"
+#import <UIKit/UIScreen.h>
 
 
 @interface Gene () {
@@ -15,6 +21,7 @@
 {
     return @{
         @"geneID" : @"id",
+        @"uuid" : @"_id",
         @"name" : @"name",
         @"geneDescription" : @"description",
         @"artistCount" : @"counts.artists",
@@ -40,6 +47,15 @@
     return [NSURL URLWithString:[self.urlFormatString stringByReplacingOccurrencesOfString:@":version" withString:@"thumb"]];
 }
 
+- (NSURL *)onboardingImageURL
+{
+    NSInteger heightAndWidth = 50 * [[UIScreen mainScreen] scale];
+    NSString *geminiStringURL = @"https://d7hftxdivxxvm.cloudfront.net/?resize_to=fill&width=%ld&height=%ld&quality=85&src=%@";
+    NSString *completeURL = [NSString stringWithFormat:geminiStringURL, heightAndWidth, heightAndWidth, self.urlFormatString];
+
+    return [NSURL URLWithString:completeURL];
+}
+
 - (instancetype)initWithGeneID:(NSString *)geneID
 {
     self = [super init];
@@ -54,10 +70,10 @@
 
 - (void)updateGene:(void (^)(void))success
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
     [ArtsyAPI getGeneForGeneID:self.geneID success:^(id gene) {
-        @strongify(self);
-        [self mergeValuesForKeysFromModel:gene];
+        __strong typeof (wself) sself = wself;
+        [sself mergeValuesForKeysFromModel:gene];
         success();
     } failure:^(NSError *error) {
         success();
@@ -86,17 +102,17 @@
 
 - (void)setFollowState:(BOOL)state success:(void (^)(id))success failure:(void (^)(NSError *))failure
 {
-    @weakify(self);
+    __weak typeof(self) wself = self;
     [ArtsyAPI setFavoriteStatus:state forGene:self success:^(id response) {
-        @strongify(self);
-        self.followed = state;
+        __strong typeof (wself) sself = wself;
+        sself.followed = state;
         [ARSpotlight addToSpotlightIndex:state entity:self];
         if (success) {
             success(response);
         }
     } failure:^(NSError *error) {
-        @strongify(self);
-        self.followed = !state;
+        __strong typeof (wself) sself = wself;
+        sself.followed = !state;
         if (failure) {
             failure(error);
         }
@@ -105,15 +121,10 @@
 
 - (void)getFollowState:(void (^)(ARHeartStatus status))success failure:(void (^)(NSError *error))failure
 {
-    if ([User isTrialUser]) {
-        success(ARHeartStatusNo);
-        return;
-    }
-
-    @weakify(self);
+    __weak typeof(self) wself = self;
     [ArtsyAPI checkFavoriteStatusForGene:self success:^(BOOL result) {
-        @strongify(self);
-        self.followed = result;
+        __strong typeof (wself) sself = wself;
+        sself.followed = result;
         success(result ? ARHeartStatusYes : ARHeartStatusNo);
     } failure:failure];
 }

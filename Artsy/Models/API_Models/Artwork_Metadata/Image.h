@@ -1,4 +1,7 @@
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <Mantle/Mantle.h>
+
 #import "ARHasImageBaseURL.h"
 
 
@@ -26,6 +29,7 @@
 - (NSURL *)urlForThumbnailImage;
 - (NSURL *)urlForDetailImage;
 - (NSURL *)urlForSquareImage;
+- (NSURL *)imageURLWithFormatName:(NSString *)formatName;
 
 - (NSURL *)urlTileForLevel:(NSInteger)level atX:(NSInteger)x andY:(NSInteger)y;
 - (NSURL *)urlTileWithFormatName:(NSString *)formatName;

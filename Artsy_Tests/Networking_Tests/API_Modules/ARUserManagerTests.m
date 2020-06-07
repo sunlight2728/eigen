@@ -1,3 +1,7 @@
+// We want to ignore the NSKeyedUnarchiver, since we'll be moving this to React Native pretty soon anyway.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 #import "ARUserManager.h"
 #import "ARUserManager+Stubs.h"
 #import "ARRouter.h"
@@ -10,7 +14,11 @@
 + (void)clearUserData:(ARUserManager *)manager useStaging:(id)useStaging;
 @end
 
-SpecBegin(ARUserManager);
+// This makes a lot of global changes to the  NSUserDefaults shared
+// user defaults, and so is ran at the end.
+// FIXME: Migrate to using DI for defaults.
+
+SpecBegin(ZARUserManager);
 
 beforeEach(^{
     [ARUserManager clearUserData];
@@ -55,7 +63,7 @@ describe(@"login", ^{
         });
         
         it(@"sets router auth token", ^{
-            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://m.artsy.net"]];
+            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://www.artsy.net"]];
             expect([request valueForHTTPHeaderField:ARAuthHeader]).toNot.beNil();
         });
     });
@@ -74,9 +82,9 @@ describe(@"login", ^{
         itBehavesLike(@"success", nil);
     });
 
-    describe(@"with a Twitter token", ^{
+    describe(@"with an apple uid", ^{
         beforeEach(^{
-            [ARUserManager stubAndLoginWithTwitterToken];
+            [ARUserManager stubAndLoginWithAppleUID];
         });
         itBehavesLike(@"success", nil);
     });
@@ -123,6 +131,7 @@ describe(@"login", ^{
 
 describe(@"clearUserData", ^{
     describe(@"unsetting user defaults", ^{
+
         before(^{
             [[NSUserDefaults standardUserDefaults] setValue:@"test value" forKey:@"TestKey"];
         });
@@ -148,17 +157,9 @@ describe(@"clearUserData", ^{
             expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beFalsy();
             expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.beNil();
         });
-
-        it(@"does not set use staging if it was not set before", ^{
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beNil();
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.equal(@"test value");
-            [ARUserManager clearUserData];
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beNil();
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.beNil();
-        });
     });
 
-    describe(@"clearUserDAtaAndSetUserStaging", ^{
+    describe(@"clearUserDataAndSetUserStaging", ^{
         before(^{
             [[NSUserDefaults standardUserDefaults] setValue:@"test value" forKey:@"TestKey"];
         });
@@ -168,7 +169,7 @@ describe(@"clearUserData", ^{
         });
 
         it(@"explicitly sets staging default to yes", ^{
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beNil();
+            expect([[NSUserDefaults standardUserDefaults] objectForKey:ARUseStagingDefault]).to.beTruthy();
             expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.equal(@"test value");
             [ARUserManager clearUserData:[ARUserManager sharedManager] useStaging:@(YES)];
             expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beTruthy();
@@ -176,21 +177,13 @@ describe(@"clearUserData", ^{
         });
         
         it(@"explicitly sets staging default to no", ^{
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beNil();
+            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beTruthy();
             expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.equal(@"test value");
             [ARUserManager clearUserData:[ARUserManager sharedManager] useStaging:@(NO)];
             expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beFalsy();
             expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.beNil();
         });
 
-        it(@"does not set staging value passed is nil", ^{
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beNil();
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.equal(@"test value");
-            [ARUserManager clearUserData:[ARUserManager sharedManager] useStaging:nil];
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:ARUseStagingDefault]).to.beNil();
-            expect([[NSUserDefaults standardUserDefaults] valueForKey:@"TestKey"]).to.beNil();
-        });
-        
     });
 
     describe(@"with email and password", ^{
@@ -211,7 +204,7 @@ describe(@"clearUserData", ^{
         });
         
         it(@"unsets router auth token", ^{
-            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://m.artsy.net"]];
+            NSURLRequest *request = [ARRouter requestForURL:[NSURL URLWithString:@"http://www.artsy.net"]];
             expect([request valueForHTTPHeaderField:ARAuthHeader]).to.beNil();
         });
     });
@@ -244,33 +237,6 @@ describe(@"clearUserData", ^{
     });
 });
 
-describe(@"startTrial", ^{
-    beforeEach(^{
-        [ARUserManager stubXappToken:[ARUserManager stubXappToken] expiresIn:[ARUserManager stubXappTokenExpiresIn]];
-
-        [[ARUserManager sharedManager] startTrial:^{
-
-        } failure:^(NSError *error) {
-            failure(@"startTrial should not fail");
-        }];
-    });
-
-    it(@"sets an xapp token", ^{
-        NSString *xapp = [[NSUserDefaults standardUserDefaults] objectForKey:ARXAppTokenDefault];
-        expect([ARUserManager stubXappToken]).to.equal(xapp);
-    });
-
-    // Right now the Xapp call in tests is a stub that just returns a string straight away
-    // so it doesn't set an expiry date
-
-    pending(@"sets expiry date", ^{
-        ISO8601DateFormatter *dateFormatter = [[ISO8601DateFormatter alloc] init];
-        NSDate *expiryDate = [dateFormatter dateFromString:[ARUserManager stubXappTokenExpiresIn]];
-
-        expect([expiryDate isEqualToDate:[[NSUserDefaults standardUserDefaults] objectForKey:ARXAppTokenExpiryDateDefault]]).to.beTruthy();
-    });
-});
-
 describe(@"createUserWithName", ^{
     beforeEach(^{
         [ARUserManager stubXappToken:[ARUserManager stubXappToken] expiresIn:[ARUserManager stubXappTokenExpiresIn]];
@@ -281,6 +247,35 @@ describe(@"createUserWithName", ^{
             done = YES;
         } failure:^(NSError *error, id JSON) {
             XCTFail(@"createUserWithName: %@", error);
+            done = YES;
+        }];
+
+        while(!done) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+        }
+    });
+
+    it(@"sets current user", ^{
+        expect([ARUserManager didCreateAccountThisSession]).to.beTruthy();
+
+        User *currentUser = [[ARUserManager sharedManager] currentUser];
+        expect(currentUser).toNot.beNil();
+        expect(currentUser.userID).to.equal(ARUserManager.stubUserID);
+        expect(currentUser.email).to.equal(ARUserManager.stubUserEmail);
+        expect(currentUser.name).to.equal(ARUserManager.stubUserName);
+    });
+});
+
+describe(@"createUserViaAppleUID", ^{
+    beforeEach(^{
+        [ARUserManager stubXappToken:[ARUserManager stubXappToken] expiresIn:[ARUserManager stubXappTokenExpiresIn]];
+        [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/user" withResponse:@{ @"id": [ARUserManager stubUserID], @"email": [ARUserManager stubUserEmail], @"name": [ARUserManager stubUserName] } andStatusCode:201];
+
+        __block BOOL done = NO;
+        [[ARUserManager sharedManager] createUserViaAppleWithUID:@"apple.uid" email:[ARUserManager stubUserEmail] name:[ARUserManager stubUserName] success:^(User *user) {
+            done = YES;
+        } failure:^(NSError *error, id JSON) {
+            XCTFail(@"createUserWithAppleUID: %@", error);
             done = YES;
         }];
 
@@ -329,90 +324,6 @@ describe(@"createUserViaFacebookWithToken", ^{
     });
 });
 
-describe(@"createUserViaTwitterWithToken", ^{
-    beforeEach(^{
-        [ARUserManager stubXappToken:[ARUserManager stubXappToken] expiresIn:[ARUserManager stubXappTokenExpiresIn]];
-        [OHHTTPStubs stubJSONResponseAtPath:@"/api/v1/user" withResponse:@{ @"id": [ARUserManager stubUserID], @"email": [ARUserManager stubUserEmail], @"name": [ARUserManager stubUserName] } andStatusCode:201];
-
-        __block BOOL done = NO;
-        [[ARUserManager sharedManager] createUserViaTwitterWithToken:@"twitter token" secret:@"twitter secret" email:[ARUserManager stubUserEmail] name:[ARUserManager stubUserName] success:^(User *user) {
-            done = YES;
-        } failure:^(NSError *error, id JSON) {
-            XCTFail(@"createUserWithFacebookToken: %@", error);
-            done = YES;
-        }];
-
-        while(!done) {
-            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
-        }
-    });
-
-    it(@"sets current user", ^{
-        expect([ARUserManager didCreateAccountThisSession]).to.beTruthy();
-
-        User *currentUser = [[ARUserManager sharedManager] currentUser];
-        expect(currentUser).toNot.beNil();
-        expect(currentUser.userID).to.equal(ARUserManager.stubUserID);
-        expect(currentUser.email).to.equal(ARUserManager.stubUserEmail);
-        expect(currentUser.name).to.equal(ARUserManager.stubUserName);
-    });
-});
-
-describe(@"trialUserEmail", ^{
-    beforeEach(^{
-        [ARUserManager sharedManager].trialUserEmail = nil;
-    });
-
-    afterEach(^{
-        [ARUserManager sharedManager].trialUserEmail = nil;
-    });
-
-    it(@"is nil", ^{
-        expect([ARUserManager sharedManager].trialUserEmail).to.beNil();
-    });
-
-    it(@"sets and reads value", ^{
-        [ARUserManager sharedManager].trialUserEmail = @"trial@example.com";
-        expect([ARUserManager sharedManager].trialUserEmail).to.equal(@"trial@example.com");
-    });
-});
-
-describe(@"trialUserName", ^{
-    beforeEach(^{
-        [ARUserManager sharedManager].trialUserName = nil;
-    });
-
-    afterEach(^{
-        [ARUserManager sharedManager].trialUserName = nil;
-    });
-
-    it(@"is nil", ^{
-        expect([ARUserManager sharedManager].trialUserName).to.beNil();
-    });
-
-    it(@"sets and reads value", ^{
-        [ARUserManager sharedManager].trialUserName = @"Name";
-        expect([ARUserManager sharedManager].trialUserName).to.equal(@"Name");
-    });
-});
-
-describe(@"trialUserUUID", ^{
-    beforeEach(^{
-        [[ARUserManager sharedManager] resetTrialUserUUID];
-    });
-
-    afterEach(^{
-        [[ARUserManager sharedManager] resetTrialUserUUID];
-    });
-
-    it(@"is not", ^{
-        expect([ARUserManager sharedManager].trialUserUUID).notTo.beNil();
-    });
-    
-    it(@"is persisted", ^{
-        NSString *uuid = [ARUserManager sharedManager].trialUserUUID;
-        expect([ARUserManager sharedManager].trialUserUUID).to.equal(uuid);
-    });
-});
-
 SpecEnd;
+
+#pragma clang diagnostic pop

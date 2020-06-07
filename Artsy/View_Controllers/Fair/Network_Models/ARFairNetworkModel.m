@@ -1,5 +1,10 @@
 #import "ARFairNetworkModel.h"
 
+#import "ArtsyAPI+Fairs.h"
+#import "ArtsyAPI+OrderedSets.h"
+#import "Fair.h"
+#import "OrderedSet.h"
+
 
 @implementation ARFairNetworkModel
 
@@ -30,7 +35,7 @@
     ARFairOrganizerFeed *postsFeed = [[ARFairOrganizerFeed alloc] initWithFairOrganizer:fair.organizer];
     ARFeedTimeline *postsFeedTimeline = [[ARFeedTimeline alloc] initWithFeed:postsFeed];
 
-    [postsFeedTimeline getNewItems:^{
+    [postsFeedTimeline getNewItems:^(NSArray *items) {
         success(postsFeedTimeline);
     } failure:^(NSError *error) {
         success (postsFeedTimeline);
@@ -44,10 +49,7 @@
 
 - (void)getMapInfoForFair:(Fair *)fair success:(void (^)(NSArray *))success failure:(void (^)(NSError *))failure
 {
-   @weakify(fair);
-
     [ArtsyAPI getMapInfoForFair:fair success:^(NSArray *maps) {
-        @strongify(fair);
         if (!fair) { return; }
         fair.maps = maps;
         if (success) {

@@ -1,60 +1,36 @@
-## Deploy to App Store
+# Deploy to App Store
 
-### TODOs for anyone before deploying
+AppStore builds have to go through the beta process first. [Check out the beta docs](./deploy_to_beta.md) for more info.
 
-1. Check out eigen Artsy master.
-2. Ensure all required/expected analytics events are in `docs/BETA_CHANGELOG.md`.
-3. Move `docs/BETA_CHANGELOG.md` to `CHANGELOG.md`.
-4. Remove dev only entries from `CHANGELOG.md`.
-5. Run `make appstore`. This runs `pod install` and prompts for a release version number.
-6. Update CHANGELOG with the release number.
-7. Add and commit the changed files, typically with `-m "Preparing for the next release, version X.Y.Z."`.
+## Test the Beta
 
-### Provisioning Profiles
+Eigen's beta pre-submission checklist has [moved into Notion](https://www.notion.so/artsy/Pre-submission-QA-Checklist-785e3233fdcf423f95ee239ab3c22ec3).
 
-Open the project in Xcode, click on the Artsy project.
+## Preparing to Ship a Final Version
 
-1. Change iOS Deployment Target to "iPhone only" in Info, Deployment Target.
-2. Verify that the provisioning profiles under Code Signing are displayed as below in Build Settings.
+1. Update [`release_notes.txt`](https://github.com/artsy/eigen/blob/master/fastlane/metadata/en-US/release_notes.txt) with the **user-facing** release notes for this version. Commit the changes.
+1. Run `make promote_beta_to_submission`. This will submit the **most recent beta** for App Store review
 
-IMPORTANT: We use the "Artsy Inc Account" not "ARTSY INC" - which is our enterprise account.
+### What about IDFA?
 
-The provisioning profile should be _"Artsy Mobile - App Store DistrProfile"_ and when the Code Signing ( which should be automatic ) is clicked it should show  "_iPhone Distribution : Art.sy Inc"_
+We _do_ use the IDFA to attribute app installations to previously service advertisements. This should be handled for you.
 
-If you don't see the "Artsy Mobile - App Store DistrProfile" in the options above, import the Dev/Apple/Artsy AppStore Identities from the Artsy Engineering Operations 1Password vault.
+## Release to App Store
 
-If you cannot set Code Signing Identity to "Automatic", under which you'll find "iPhone Distribution: Artsy Inc.", open Xcode Preferences and add it@artsymail.com as an apple account. Also, choose the it@artsymail.com apple ID, click "Artsy Inc." and then refresh until you see two iOS Distribution signing identities, one that says "iOS Distribution (2)".
+Our App Store releases are done manually, instead of automatically once Apple approves the app. Don't release unless you are available over the next few hours to monitor Sentry for errors.
 
-See [certs.md](certs.md) for more info on certificates.
+1. Go to [AppStoreConnect](https://appstoreconnect.apple.com).
+1. Navigate to Eigen.
+1. Select the version.
+1. Hit "Release this Version" button. It will take several hours for the new version to propagate through the AppStore to users.
+1. Monitor [Sentry](https://sentry.io/artsynet/eigen/) in the #front-end channel on Slack for any errors (all production errors are sent to Slack when they first occur).
 
-### Prepare in iTunes Connect
+## Prepare for the Next Release
 
-1. You need to have copy for the next release, for minor releases this is just a list of notable changes.
-2. Log in to [iTunes Connect](https://itunesconnect.apple.com) as it@artsymail.com ( team _Art.sy Inc_ ).
-3. Manage Your Apps > Which-ever app > Add new version.
-4. Fill in the copy for each localization.
-
-### Release to AppStore
-
-1. Install HockeyApp from http://hockeyapp.net/apps and run it.
-2. In Xcode, change the target device to _iOS Device_.
-3. In Xcode, hold alt (`⌥`) and go to the menu, hit _Product_ and then _Archive..._.
-4. Check that the Build Configuration is set to _Store_.
-5. Hit _Archive_.
-6. Hit _Distribute_, it will run validations and submit.
-
-### Upon Successful Submission
-
-1. Return to iTunes Connect and click ‘Submit for Review’. Then answer the subequent questions as follows:
-  * Have you added or made changes to encryption features since your last submission of this app?: NO
-  * Does your app contain, display, or access third-party content?: YES
-  * Do you have all necessary rights to that content […]?: YES
-  * Does this app use the Advertising Identifier (IDFA)?: NO
-3. HockeyApp will automatically see your new archive. Push Archived build to HockeyApp as a live build.
-4. Make a git tag for the version with `git tag x.y.z`. Push the tags to `artsy/eigen` with `git push --tags`.
-
-### Prepare for the Next Release
-
-1. Run `make next`. This runs `pod install` and prompts for the next version number.
-2. Add a new section to CHANGELOG called _Next_.
-3. Add and commit the changed files, typically with `-m "Preparing for development, version X.Y.Z."`.
+1. Create a new version of the app in AppStoreConnect (if you don't do this, beta deployments will fail).
+   - Go to "My Apps", click Eigen ("Artsy: Buy & Sell Original Art"), click "+ version or platform", click "iOS", and enter version number.
+1. Run `make next`. This prompts for the next version number. **Use the same version** as the previous step.
+1. Move the release from `upcoming` to `releases` in `CHANGELOG.yml` and add a new, empty entry under `upcoming`. Make sure the `date` is accurate. [Here is a previous commit](https://github.com/artsy/eigen/commit/580db98fa1165e01f81070e9bbc77598a47bcfc9#diff-96801928eca93eea4a5b44f359b868b5).
+1. Add and commit the changed files, typically with `-m "Preparing for development, version X.Y.Z."`.
+1. Run `make deploy` to trigger a new beta. (When we add a new version, the first beta goes through additional TestFlight review by Apple. By trigger the beta now, we go through that review early, and avoid delaying future QA sessions.)
+1. PR your changes back into the `master` branch.

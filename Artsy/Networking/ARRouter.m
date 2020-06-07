@@ -1,19 +1,57 @@
-#import "ARNetworkConstants.h"
 #import "ARRouter.h"
-#import "ARRouter+Private.h"
+
+#import "Artist.h"
+#import "Artwork.h"
+#import "ArtsyAPI+SiteFunctions.h"
+#import "ARRouter+GraphQL.h"
+#import "ARDefaults.h"
+#import "ARNetworkConstants.h"
 #import "ARUserManager.h"
+#import "ARAppStatus.h"
+#import "Fair.h"
+#import "FairOrganizer.h"
+#import "Gene.h"
+#import "Partner.h"
+#import "PartnerShow.h"
+#import "Profile.h"
+#import "User.h"
+#import "AROptions.h"
+#import "ARLogger.h"
+
+#import "UIDevice-Hardware.h"
+
 #import <UICKeyChainStore/UICKeyChainStore.h>
 #import <Keys/ArtsyKeys.h>
+#import <ObjectiveSugar/ObjectiveSugar.h>
+#import <AFNetworking/AFNetworking.h>
 
 static AFHTTPSessionManager *staticHTTPClient = nil;
 static NSSet *artsyHosts = nil;
+
+static NSString *hostFromString(NSString *string)
+{
+    return [[NSURL URLWithString:string] host];
+}
 
 
 @implementation ARRouter
 
 + (void)setup
 {
-    artsyHosts = [NSSet setWithObjects:@"art.sy", @"artsyapi.com", @"artsy.net", @"m.artsy.net", @"staging.artsy.net", @"m-staging.artsy.net", nil];
+    NSString *productionWeb = hostFromString(ARBaseWebURL);
+    NSString *productionDeprecatedMobileWeb = hostFromString(ARBaseDeprecatedMobileWebURL);
+    NSString *productionAPI = hostFromString(ARBaseApiURL);
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *stagingWeb = hostFromString([defaults stringForKey:ARStagingWebURLDefault]);
+    NSString *stagingDeprecatedMobileWeb = hostFromString(ARStagingBaseDeprecatedMobileWebURL);
+    NSString *stagingAPI = hostFromString([defaults stringForKey:ARStagingAPIURLDefault]);
+
+    artsyHosts = [NSSet setWithArray:@[
+        @"artsy.net",
+        productionAPI, productionWeb, productionDeprecatedMobileWeb,
+        stagingAPI, stagingWeb, stagingDeprecatedMobileWeb
+    ]];
 
     [ARRouter setupWithBaseApiURL:[ARRouter baseApiURL]];
 
@@ -28,25 +66,43 @@ static NSSet *artsyHosts = nil;
 + (NSURL *)baseApiURL
 {
     if ([AROptions boolForOption:ARUseStagingDefault]) {
-        return [NSURL URLWithString:ARStagingBaseApiURL];
+        NSString *stagingBaseAPI = [[NSUserDefaults standardUserDefaults] stringForKey:ARStagingAPIURLDefault];
+        return [NSURL URLWithString:stagingBaseAPI];
     } else {
         return [NSURL URLWithString:ARBaseApiURL];
     }
 }
 
++ (NSString *)baseMetaphysicsApiURLString
+{
+    if ([AROptions boolForOption:ARUseStagingDefault]) {
+        NSString *stagingBaseAPI = [[NSUserDefaults standardUserDefaults] stringForKey:ARStagingMetaphysicsURLDefault];
+        return stagingBaseAPI;
+    } else {
+        return ARBaseMetaphysicsApiURL;
+    }
+}
+
++ (NSString *)baseCausalitySocketURLString
+{
+    return [self causalitySocketURLStringWithProduction:ARCausalitySocketURL];
+}
+
++ (NSString *)causalitySocketURLStringWithProduction:(NSString *)productionURL;
+{
+    if ([AROptions boolForOption:ARUseStagingDefault]) {
+        NSString *stagingSocketURLString = [[NSUserDefaults standardUserDefaults] stringForKey:ARStagingLiveAuctionSocketURLDefault];
+        return stagingSocketURLString;
+    } else {
+        return productionURL;
+    }
+}
+
 + (NSURL *)baseWebURL
 {
-    return [UIDevice isPad] ? [self baseDesktopWebURL] : [self baseMobileWebURL];
-}
-
-+ (NSURL *)baseDesktopWebURL
-{
-    return [NSURL URLWithString:[AROptions boolForOption:ARUseStagingDefault] ? ARStagingBaseWebURL : ARBaseDesktopWebURL];
-}
-
-+ (NSURL *)baseMobileWebURL
-{
-    return [NSURL URLWithString:[AROptions boolForOption:ARUseStagingDefault] ? ARStagingBaseMobileWebURL : ARBaseMobileWebURL];
+    NSString *stagingBaseWebURL = [[NSUserDefaults standardUserDefaults] stringForKey:ARStagingWebURLDefault];
+    NSString *url = [AROptions boolForOption:ARUseStagingDefault] ? stagingBaseWebURL : ARBaseWebURL;
+    return [NSURL URLWithString:url];
 }
 
 + (void)setupWithBaseApiURL:(NSURL *)baseApiURL
@@ -66,9 +122,14 @@ static NSSet *artsyHosts = nil;
     }];
 
     // Ensure the keychain is empty incase you've uninstalled and cleared user data
-    if (![[ARUserManager sharedManager] hasExistingAccount]) {
+    // but make sure that this is not a slip-up due to background fetch downloading
+
+    UIApplicationState state = [[UIApplication sharedApplication] applicationState];
+    ARUserManager *user = [ARUserManager sharedManager];
+
+    if (![user hasExistingAccount] && state != UIApplicationStateBackground) {
         [UICKeyChainStore removeItemForKey:AROAuthTokenDefault];
-        [UICKeyChainStore removeItemForKey:ARXAppTokenDefault];
+        [UICKeyChainStore removeItemForKey:ARXAppTokenKeychainKey];
     }
 
     NSString *token = [UICKeyChainStore stringForKey:AROAuthTokenDefault];
@@ -77,27 +138,19 @@ static NSSet *artsyHosts = nil;
         [ARRouter setAuthToken:token];
 
     } else {
-        ARActionLog(@"Found trial XApp token in keychain");
-        NSString *xapp = [UICKeyChainStore stringForKey:ARXAppTokenDefault];
+        ARActionLog(@"Found temporary local user XApp token in keychain");
+        NSString *xapp = [UICKeyChainStore stringForKey:ARXAppTokenKeychainKey];
         [ARRouter setXappToken:xapp];
+    }
+
+    if ([User isLocalTemporaryUser]) {
+        [self setHTTPHeader:AREigenLocalTemporaryUserIDHeader value:user.localTemporaryUserUUID];
     }
 }
 
 + (void)setupUserAgent
 {
-    NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
-    NSString *build = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-
-    // Take the default from AFNetworking, and extend them all to include code names
-    // and individual build numbers
-
-    AFHTTPRequestSerializer *serializer = [[AFHTTPRequestSerializer alloc] init];
-    NSString *userAgent = serializer.HTTPRequestHeaders[@"User-Agent"];
-    NSString *deviceName = [[UIDevice currentDevice] name];
-    NSString *agentString = [NSString stringWithFormat:@"Mozilla/5.0 Artsy-Mobile/%@ Eigen/%@ Device: %@", version, build, deviceName];
-    userAgent = [userAgent stringByReplacingOccurrencesOfString:@"Artsy" withString:agentString];
-    userAgent = [userAgent stringByAppendingString:@"AppleWebKit/601.1.46 (KHTML, like Gecko)"];
-
+    NSString *userAgent = [self userAgent];
     [[NSUserDefaults standardUserDefaults] registerDefaults:@{ @"UserAgent" : userAgent }];
     [self setHTTPHeader:@"User-Agent" value:userAgent];
 }
@@ -111,6 +164,13 @@ static NSSet *artsyHosts = nil;
 {
     return (!url.scheme || ([url.scheme isEqual:@"http"] || [url.scheme isEqual:@"https"]));
 }
+
++ (BOOL)isTelURL:(NSURL *)url
+{
+    return (url.scheme && [url.scheme isEqual:@"tel"]);
+}
+
+/// TODO: don't allow Special Apple URLs? iTMS / maps.apple?
 
 + (BOOL)isInternalURL:(NSURL *)url
 {
@@ -129,7 +189,32 @@ static NSSet *artsyHosts = nil;
     }
 
     //if there's no host, we'll assume it's relative
-    return (!host || (host && [artsyHosts containsObject:host]));
+    BOOL isRelative = (host == nil);
+    return isRelative || [self isArtsyHost:host];
+}
+
++ (BOOL)isArtsyHost:(NSString *)host
+{
+    if (host) {
+        return ([artsyHosts containsObject:host] || [host hasSuffix:@".artsy.net"]);
+    } else {
+        return NO;
+    }
+}
+
++ (BOOL)isBNMORequestURL:(NSURL *)url;
+{
+    return [url.path hasPrefix:@"/orders/"];
+}
+
++ (BOOL)isPaymentRequestURL:(NSURL *)url;
+{
+    return [url.host hasSuffix:@".lewitt-web-public-staging.artsy.net"] || [self isProductionPaymentRequestURL:url];
+}
+
++ (BOOL)isProductionPaymentRequestURL:(NSURL *)url;
+{
+    return [url.host hasSuffix:@".artsyinvoicing.com"];
 }
 
 + (NSURLRequest *)requestForURL:(NSURL *)url
@@ -138,9 +223,35 @@ static NSSet *artsyHosts = nil;
     if (![ARRouter isInternalURL:url]) {
         [request setValue:nil forHTTPHeaderField:ARAuthHeader];
         [request setValue:nil forHTTPHeaderField:ARXappHeader];
+        [request setValue:nil forHTTPHeaderField:AREigenLocalTemporaryUserIDHeader];
     }
 
     return request;
+}
+
++ (NSString *)userAgent
+{
+    static NSString *cachedUserAgent;
+    if (cachedUserAgent) {
+        return cachedUserAgent;
+    }
+
+    NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
+    NSString *build = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+
+    // Take the default from AFNetworking, and extend them all to include:
+    // * code names
+    // * version information
+    // * include big browser engine names so that scripts like that of fast.fonts.net WKWebView will load
+
+    AFHTTPRequestSerializer *serializer = [[AFHTTPRequestSerializer alloc] init];
+    NSString *userAgent = serializer.HTTPRequestHeaders[@"User-Agent"];
+    NSString *model = [UIDevice modelName];
+    NSString *agentString = [NSString stringWithFormat:@"%@ Mozilla/5.0 Artsy-Mobile/%@ Eigen/%@", model, version, build];
+    userAgent = [userAgent stringByReplacingOccurrencesOfString:@"Artsy" withString:agentString];
+    userAgent = [userAgent stringByAppendingString:@" AppleWebKit/601.1.46 (KHTML, like Gecko)"];
+    cachedUserAgent = userAgent;
+    return userAgent;
 }
 
 + (AFHTTPSessionManager *)httpClient
@@ -153,6 +264,12 @@ static NSSet *artsyHosts = nil;
 
 + (void)setAuthToken:(NSString *)token
 {
+    // XApp tokens are only needed during onboarding and only valid for a week. Clearing it when we obtain an access
+    // token, after onboarding is completed, ensures the app doesn’t get into a state where including an old invalid
+    // XApp token leads to API requests to fail.
+    if (token) {
+        [self setXappToken:nil];
+    }
     [self setHTTPHeader:ARAuthHeader value:token];
 }
 
@@ -184,7 +301,20 @@ static NSSet *artsyHosts = nil;
         @"grant_type" : @"credentials",
         @"scope" : @"offline_access"
     };
-    return [self requestWithMethod:@"GET" path:AROAuthURL parameters:params];
+    return [self requestWithMethod:@"POST" path:AROAuthURL parameters:params];
+}
+
++ (NSURLRequest *)newAppleOAuthRequestWithUID:(NSString *)appleUID
+{
+    NSDictionary *params = @{
+        @"oauth_provider" : @"apple",
+        @"apple_uid": appleUID,
+        @"client_id" : [ArtsyKeys new].artsyAPIClientKey,
+        @"client_secret" : [ArtsyKeys new].artsyAPIClientSecret,
+        @"grant_type" : @"apple_uid",
+        @"scope" : @"offline_access"
+    };
+    return [self requestWithMethod:@"POST" path:AROAuthURL parameters:params];
 }
 
 + (NSURLRequest *)newFacebookOAuthRequestWithToken:(NSString *)token
@@ -197,21 +327,7 @@ static NSSet *artsyHosts = nil;
         @"grant_type" : @"oauth_token",
         @"scope" : @"offline_access"
     };
-    return [self requestWithMethod:@"GET" path:AROAuthURL parameters:params];
-}
-
-+ (NSURLRequest *)newTwitterOAuthRequestWithToken:(NSString *)token andSecret:(NSString *)secret
-{
-    NSDictionary *params = @{
-        @"oauth_provider" : @"twitter",
-        @"oauth_token" : token,
-        @"oauth_token_secret" : secret,
-        @"client_id" : [ArtsyKeys new].artsyAPIClientKey,
-        @"client_secret" : [ArtsyKeys new].artsyAPIClientSecret,
-        @"grant_type" : @"oauth_token",
-        @"scope" : @"offline_access"
-    };
-    return [self requestWithMethod:@"GET" path:AROAuthURL parameters:params];
+    return [self requestWithMethod:@"POST" path:AROAuthURL parameters:params];
 }
 
 
@@ -242,8 +358,25 @@ static NSSet *artsyHosts = nil;
     NSDictionary *params = @{
         @"email" : email,
         @"password" : password,
-        @"name" : name
+        @"name" : name,
+        @"agreed_to_receive_emails": @YES,
+        @"accepted_terms_of_service": @YES
     };
+    return [self requestWithMethod:@"POST" path:ARCreateUserURL parameters:params];
+}
+
++ (NSURLRequest *)newCreateUserViaAppleRequestWithUID:(NSString * _Nonnull)appleUID email:(NSString * _Nonnull)email name:(NSString * _Nullable)name
+{
+    NSMutableDictionary *params = [@{
+        @"provider" : @"apple",
+        @"apple_uid" : appleUID,
+        @"email" : email,
+        @"agreed_to_receive_emails": @YES,
+        @"accepted_terms_of_service": @YES
+    } mutableCopy];
+    if (name != nil) {
+        params[@"name"] = name;
+    }
     return [self requestWithMethod:@"POST" path:ARCreateUserURL parameters:params];
 }
 
@@ -253,20 +386,9 @@ static NSSet *artsyHosts = nil;
         @"provider" : @"facebook",
         @"oauth_token" : token,
         @"email" : email,
-        @"name" : name
-    };
-
-    return [self requestWithMethod:@"POST" path:ARCreateUserURL parameters:params];
-}
-
-+ (NSURLRequest *)newCreateUserViaTwitterRequestWithToken:(NSString *)token secret:(NSString *)secret email:(NSString *)email name:(NSString *)name
-{
-    NSDictionary *params = @{
-        @"provider" : @"twitter",
-        @"oauth_token" : token,
-        @"oauth_token_secret" : secret,
-        @"email" : email,
-        @"name" : name
+        @"name" : name,
+        @"agreed_to_receive_emails": @YES,
+        @"accepted_terms_of_service": @YES
     };
 
     return [self requestWithMethod:@"POST" path:ARCreateUserURL parameters:params];
@@ -275,9 +397,19 @@ static NSSet *artsyHosts = nil;
 #pragma mark -
 #pragma mark User
 
++ (NSURLRequest *)checkExistingUserWithEmail:(NSString *)email
+{
+    return [self requestWithMethod:@"GET" path:ARCreateUserURL parameters:@{ @"email" : email }];
+}
+
 + (NSURLRequest *)newUserInfoRequest
 {
     return [self requestWithMethod:@"GET" path:ARMyInfoURL parameters:nil];
+}
+
++ (NSURLRequest *)newMeHEADRequest
+{
+    return [self requestWithMethod:@"HEAD" path:ARMyInfoURL parameters:nil];
 }
 
 + (NSURLRequest *)newUserEditRequestWithParams:(NSDictionary *)params
@@ -364,8 +496,7 @@ static NSSet *artsyHosts = nil;
 
 + (NSURLRequest *)newArtworkInfoRequestForArtworkID:(NSString *)artworkID
 {
-    NSString *address = [NSString stringWithFormat:ARNewArtworkInfoURLFormat, artworkID];
-    return [self requestWithMethod:@"GET" path:address parameters:nil];
+    return [self graphQLRequestForQuery:[self graphQueryForArtwork] variables:@{ @"artworkID": artworkID }];
 }
 
 + (NSURLRequest *)newArtworksRelatedToArtworkRequest:(Artwork *)artwork
@@ -453,18 +584,16 @@ static NSSet *artsyHosts = nil;
 }
 
 
-+ (NSURLRequest *)newArtworksFromUsersFavoritesRequestWithID:(NSString *)userID page:(NSInteger)page
++ (NSURLRequest *)newArtworksFromUsersFavoritesRequestWithCursor:(NSString *)cursor
 {
-    NSDictionary *params = @{
-        @"size" : @15,
-        @"page" : @(page),
-        @"sort" : @"-position",
-        @"total_count" : @1,
-        @"user_id" : userID ?: @"",
-        @"private" : ARIsRunningInDemoMode ? @"false" : @"true"
-    };
+    NSString *query;
+    if ([cursor length] > 0) {
+        query = [self graphQueryForFavoritesAfter:cursor];
+    } else {
+        query = [self graphQueryForFavorites];
+    }
 
-    return [self requestWithMethod:@"GET" path:ARFavoritesURL parameters:params];
+    return [self graphQLRequestForQuery:query];
 }
 
 + (NSURLRequest *)newCheckFavoriteStatusRequestForArtwork:(Artwork *)artwork
@@ -559,10 +688,66 @@ static NSSet *artsyHosts = nil;
     return [self requestWithMethod:@"GET" path:ARFollowArtistsURL parameters:@{ @"fair_id" : fair.fairID }];
 }
 
-+ (NSURLRequest *)newArtistsRelatedToArtistRequest:(Artist *)artist
++ (NSURLRequest *)newArtistRelatedToArtistRequest:(Artist *)artist excluding:(NSArray *)artistsToExclude
 {
-    NSDictionary *params = @{ @"artist" : @[ artist.artistID ] };
+    NSArray *artistIDsToExclude = [artistsToExclude valueForKey:@"uuid"];
+
+    NSDictionary *params = @{ @"artist_id" : artist.artistID,
+                              @"size" : @1,
+                              @"exclude_artist_ids" : artistIDsToExclude };
+
     return [self requestWithMethod:@"GET" path:ARRelatedArtistsURL parameters:params];
+}
+
++ (NSURLRequest *)newArtistsRelatedToArtistRequest:(Artist *)artist excluding:(NSArray *)artistsToExclude
+{
+    NSArray *artistIDsToExclude = [artistsToExclude valueForKey:@"uuid"];
+
+    NSDictionary *params = @{ @"artist_id" : artist.artistID,
+                              @"exclude_artist_ids" : artistIDsToExclude };
+    return [self requestWithMethod:@"GET" path:ARRelatedArtistsURL parameters:params];
+}
+
++ (NSURLRequest *)newGeneRelatedToGeneRequest:(Gene *)gene excluding:(NSArray *)genesToExclude
+{
+    NSArray *geneIDsToExclude = [genesToExclude valueForKey:@"uuid"];
+
+    NSDictionary *params = @{ @"size" : @1,
+                              @"exclude_gene_ids" : geneIDsToExclude };
+    return [self requestWithMethod:@"GET" path:NSStringWithFormat(ARRelatedGeneURLFormat, gene.geneID) parameters:params];
+}
+
++ (NSURLRequest *)newGenesRelatedToGeneRequest:(Gene *)gene excluding:(NSArray *)genesToExclude
+{
+    NSArray *geneIDsToExclude = [genesToExclude valueForKey:@"uuid"];
+
+    NSDictionary *params = @{ @"exclude_gene_ids" : geneIDsToExclude };
+
+    return [self requestWithMethod:@"GET" path:NSStringWithFormat(ARRelatedGeneURLFormat, gene.geneID) parameters:params];
+}
+
++ (NSURLRequest *)newArtistsPopularRequest
+{
+    return [self requestWithMethod:@"GET" path:ARPopularArtistsURL parameters:nil];
+}
+
++ (NSURLRequest *)newArtistsPopularRequestFallback
+{
+    // we guard against delta not being able to provide us the current popular artists
+    // by having a backup list on S3
+
+    NSString *stringURL = @"https://s3.amazonaws.com/eigen-production/json/eigen_popularartists.json";
+
+    return [[NSURLRequest alloc] initWithURL:[NSURL URLWithString:stringURL]];
+}
+
++ (NSURLRequest *)newGenesPopularRequest
+
+{
+    // we get hard coded categories from this json file that force uses also
+    NSString *stringURL = @"https://s3.amazonaws.com/eigen-production/json/eigen_categories.json";
+
+    return [[NSURLRequest alloc] initWithURL:[NSURL URLWithString:stringURL]];
 }
 
 + (NSURLRequest *)newShowsRequestForArtist:(NSString *)artistID
@@ -666,7 +851,7 @@ static NSSet *artsyHosts = nil;
 
 + (NSURLRequest *)newSearchRequestWithQuery:(NSString *)query
 {
-    return [self requestWithMethod:@"GET" path:ARNewSearchURL parameters:@{ @"term" : query }];
+    return [self requestWithMethod:@"GET" path:ARNewSearchURL parameters:@{ @"term" : query, @"visible_to_public": @(YES), @"agg": @(NO) }];
 }
 
 + (NSURLRequest *)newSearchRequestWithFairID:(NSString *)fairID andQuery:(NSString *)query
@@ -675,9 +860,24 @@ static NSSet *artsyHosts = nil;
                                                                             @"fair_id" : fairID }];
 }
 
-+ (NSURLRequest *)newArtistSearchRequestWithQuery:(NSString *)query
++ (NSURLRequest *)newArtistSearchRequestWithQuery:(NSString *)query excluding:(NSArray *)artistsToExclude
 {
-    return [self requestWithMethod:@"GET" path:ARNewArtistSearchURL parameters:@{ @"term" : query }];
+    NSArray *artistIDsToExclude = [artistsToExclude valueForKey:@"uuid"];
+
+    NSDictionary *params = @{ @"term" : query,
+                              @"exclude_ids" : artistIDsToExclude };
+
+    return [self requestWithMethod:@"GET" path:ARNewArtistSearchURL parameters:params];
+}
+
++ (NSURLRequest *)newGeneSearchRequestWithQuery:(NSString *)query excluding:(NSArray *)genesToExclude
+{
+    NSArray *geneIDsToExclude = [genesToExclude valueForKey:@"uuid"];
+
+    NSDictionary *params = @{ @"term" : query,
+                              @"exclude_ids" : geneIDsToExclude };
+
+    return [self requestWithMethod:@"GET" path:ARNewGeneSearchURL parameters:params];
 }
 
 + (NSURLRequest *)directImageRequestForModel:(Class)model andSlug:(NSString *)slug
@@ -688,6 +888,7 @@ static NSSet *artsyHosts = nil;
         @"Artwork" : @"/api/v1/artwork/%@/default_image.jpg",
         @"Artist" : @"/api/v1/artist/%@/image",
         @"Gene" : @"/api/v1/gene/%@/image",
+        @"Fair" : @"/api/v1/profile/%@/image/square140",
         @"Tag" : @"/api/v1/tag/%@/image",
         @"Profile" : @"/api/v1/profile/%@/image",
         @"SiteFeature" : @"/api/v1/feature/%@/image",
@@ -731,11 +932,6 @@ static NSSet *artsyHosts = nil;
 
 #pragma mark - Recommendations
 
-+ (NSURLRequest *)suggestedHomepageArtworksRequest
-{
-    return [self requestWithMethod:@"GET" path:ARSuggestedHomepageArtworks parameters:nil];
-}
-
 + (NSURLRequest *)worksForYouRequest
 {
     return [ARRouter requestWithMethod:@"GET" path:ARNotificationsURL parameters:@{
@@ -746,16 +942,9 @@ static NSSet *artsyHosts = nil;
     }];
 }
 
-+ (NSURLRequest *)worksForYouCountRequest;
++ (NSURLRequest *)markNotificationsAsReadRequest
 {
-    return [ARRouter requestWithMethod:@"GET" path:ARNotificationsURL parameters:@{
-        @"page" : @1,
-        @"type" : @"ArtworkPublished",
-        @"user_id" : [User currentUser].userID,
-        @"size" : @(1), // This endpoint only works if at least 1 artwork is requested
-        @"total_count" : @1,
-        @"unread" : @"true"
-    }];
+    return [self requestWithMethod:@"PUT" path:ARNotificationsURL parameters:@{ @"status" : @"read" }];
 }
 
 #pragma mark -
@@ -798,17 +987,6 @@ static NSSet *artsyHosts = nil;
         }
     }];
 
-    if ([User isTrialUser]) {
-        NSParameterAssert(name);
-        NSParameterAssert(email);
-        [params setValue:name forKey:@"name"];
-        [params setValue:email forKey:@"email"];
-        [params setValue:[ARUserManager sharedManager].trialUserUUID forKey:@"session_id"];
-    } else {
-        NSParameterAssert(!name);
-        NSParameterAssert(!email);
-    }
-
     return [self requestWithMethod:@"POST" path:ARArtworkInquiryRequestURL parameters:params];
 }
 
@@ -836,11 +1014,10 @@ static NSSet *artsyHosts = nil;
 {
     NSDictionary *params = @{
         @"page" : @(page),
-        @"sort" : @"-date_added"
+        @"gene_id" : gene,
+        @"size" : @10
     };
-    NSString *url = [NSString stringWithFormat:ARGeneArtworksURLFormat, gene];
-
-    return [self requestWithMethod:@"GET" path:url parameters:params];
+    return [self requestWithMethod:@"GET" path:ARGeneArtworksURL parameters:params];
 }
 
 + (NSURLRequest *)newForgotPasswordRequestWithEmail:(NSString *)email
@@ -861,14 +1038,25 @@ static NSSet *artsyHosts = nil;
     NSDictionary *params = @{
         @"name" : device,
         @"token" : token,
-        @"app_id" : bundleID
+        @"app_id" : bundleID,
+        @"production" : ARAppStatus.isBetaOrDev ? @"false" : @"true"
     };
     return [self requestWithMethod:@"POST" path:ARNewDeviceURL parameters:params];
+}
+
++ (NSURLRequest *)newDeleteDeviceRequest:(NSString *)token
+{
+    return [self requestWithMethod:@"DELETE" path:[NSString stringWithFormat:ARDeleteDeviceURL, token]];
 }
 
 + (NSURLRequest *)newUptimeURLRequest
 {
     return [self requestWithMethod:@"GET" path:ARSiteUpURL parameters:nil];
+}
+
++ (NSURLRequest *)newTotalUnreadMessagesCountRequest
+{
+    return [self graphQLRequestForQuery:[self graphQueryForConversations]];
 }
 
 + (NSURLRequest *)salesWithArtworkRequest:(NSString *)artworkID
@@ -877,15 +1065,106 @@ static NSSet *artsyHosts = nil;
     return [self requestWithMethod:@"GET" path:ARSalesForArtworkURL parameters:params];
 }
 
++ (NSURLRequest *)recordArtworkViewRequest:(NSString *)artworkID
+{
+  return [self graphQLRequestForQuery:[self graphQueryToRecordViewingOfArtwork:artworkID] variables:@{@"artwork_id" : artworkID}];
+}
+
 + (NSURLRequest *)artworksForSaleRequest:(NSString *)saleID
 {
+    return [self graphQLRequestForQuery:[self graphQueryForArtworksInSale:saleID]];
+}
+
++ (NSURLRequest *)artworksForSaleRequest:(NSString *)saleID page:(NSInteger)page pageSize:(NSInteger)pageSize
+{
     NSString *url = [NSString stringWithFormat:ARSaleArtworksURLFormat, saleID];
-    return [self requestWithMethod:@"GET" path:url parameters:nil];
+    return [self requestWithMethod:@"GET" path:url parameters:@{ @"size" : @(pageSize),
+                                                                 @"page" : @(page) }];
+}
+
++ (NSURLRequest *)liveSaleStateRequest:(NSString *)saleID host:(NSString *)host
+{
+    // Note that we're relying on the host to specify the domain for the request.
+    NSString *url = [NSString stringWithFormat:ARLiveSaleStateFormat, host, saleID];
+    return [self requestWithMethod:@"GET" URLString:url parameters:nil];
+}
+
++ (NSURLRequest *)graphQLRequestForQuery:(NSString *)query
+{
+    return [self graphQLRequestForQuery:query variables:nil];
+}
+
++ (NSURLRequest *)graphQLRequestForQuery:(NSString *)query variables:(NSDictionary *)variables
+{
+  // Note that we're relying on the host to specify the domain for the request.
+  NSString *url = [self baseMetaphysicsApiURLString];
+  
+  // Makes a copy of the request serializer, one that will encode HTTP body as JSON instead of URL-encoded params.
+  AFJSONRequestSerializer *jsonSerializer = [[AFJSONRequestSerializer alloc] init];
+  for (NSString *key in staticHTTPClient.requestSerializer.HTTPRequestHeaders.allKeys) {
+    id value = staticHTTPClient.requestSerializer.HTTPRequestHeaders[key];
+    [jsonSerializer setValue:value forHTTPHeaderField:key];
+  }
+  if (ARIsRunningInDemoMode) {
+    [jsonSerializer setValue:@"502d15746e721400020006fa" forHTTPHeaderField:@"X-User-ID"];
+  } else {
+    [jsonSerializer setValue:[User currentUser].userID forHTTPHeaderField:@"X-User-ID"];
+  }
+  NSError *error;
+  
+  NSMutableDictionary *params = [[NSMutableDictionary alloc] initWithDictionary:@{ @"query" : query }];
+  if (variables && variables.count > 0) {
+    [params setValue:[self jsonDictionaryForVariables:variables] forKey:@"variables"];
+  }
+
+  NSMutableURLRequest *request = [jsonSerializer requestWithMethod:@"POST" URLString:url parameters:params error:&error];
+  
+  if (error) {
+    NSLog(@"Error serializing request: %@", error);
+  }
+  
+  return request;
+}
+
++ (NSString *)jsonDictionaryForVariables:(NSDictionary *)variables
+{
+  NSData *jsonData = [NSJSONSerialization dataWithJSONObject:variables options:0 error:nil];
+  return [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+}
+
++ (NSURLRequest *)liveSaleStaticDataRequest:(NSString *)saleID role:(NSString *)role
+{
+    NSString *accessType = role ? [NSString stringWithFormat:@"role: %@,", [role uppercaseString]] : @"";
+    NSString *causalityRole = [NSString stringWithFormat:@"causality_jwt(%@ sale_id: \"%@\")", accessType, saleID];
+
+    NSString *query = [self graphQLQueryForLiveSaleStaticData:saleID role:causalityRole];
+    return [self graphQLRequestForQuery:query];
 }
 
 + (NSURLRequest *)biddersRequest
 {
-    return [self requestWithMethod:@"GET" path:ARMyBiddersURL parameters:nil];
+    return [self biddersRequestForSale:nil];
+}
+
++ (NSURLRequest *)biddersRequestForSale:(NSString *)saleID
+{
+    NSDictionary *params;
+    if (saleID) {
+        params = @{ @"sale_id" : saleID };
+    }
+
+    return [self requestWithMethod:@"GET" path:ARMyBiddersURL parameters:params];
+}
+
++ (NSURLRequest *)lotStandingsRequestForSaleID:(NSString *)saleID
+{
+    NSParameterAssert(saleID);
+    NSDictionary *params = @{
+        @"sale_id": saleID,
+        @"live": @(NO) // We want to show standings for all sales, not just live ones.
+    };
+
+    return [self requestWithMethod:@"GET" path:ARMyLotStandingsURL parameters:params];
 }
 
 + (NSURLRequest *)bidderPositionsRequestForSaleID:(NSString *)saleID artworkID:(NSString *)artworkID
@@ -898,6 +1177,14 @@ static NSSet *artsyHosts = nil;
 + (NSURLRequest *)saleArtworkRequestForSaleID:(NSString *)saleID artworkID:(NSString *)artworkID
 {
     NSString *path = [NSString stringWithFormat:ARSaleArtworkForSaleAndArtworkURLFormat, saleID, artworkID];
+    NSMutableURLRequest *req = [self requestWithMethod:@"GET" path:path parameters:nil];
+    req.cachePolicy = NSURLRequestReloadIgnoringCacheData;
+    return req;
+}
+
++ (NSURLRequest *)requestForSaleID:(NSString *)saleID
+{
+    NSString *path = [NSString stringWithFormat:ARSaleURLFormat, saleID];
     NSMutableURLRequest *req = [self requestWithMethod:@"GET" path:path parameters:nil];
     req.cachePolicy = NSURLRequestReloadIgnoringCacheData;
     return req;
@@ -941,24 +1228,43 @@ static NSSet *artsyHosts = nil;
     return [self requestWithMethod:@"GET" path:ARSystemTimeURL parameters:nil];
 }
 
-+ (NSURLRequest *)newPendingOrderWithArtworkID:(NSString *)artworkID editionSetID:(NSString *)editionSetID
++ (NSURLRequest *)newBuyNowRequestWithArtworkID:(NSString *)artworkID
 {
-    NSMutableDictionary *params = [NSMutableDictionary dictionaryWithDictionary:@{
-        @"artwork_id" : artworkID,
-        @"replace_order" : @YES,
-        @"session_id" : [[NSUUID UUID] UUIDString] // TODO: preserve across session?
-    }];
-    if (editionSetID != nil) {
-        [params addEntriesFromDictionary:@{ @"edition_set_id" : editionSetID }];
-    }
+    return [self graphQLRequestForQuery:[self graphQueryToCreateBuyNowOrder] variables:@{ @"input" : @{ @"artworkId": artworkID, @"quantity": @(1) } }];
+}
 
-    return [self requestWithMethod:@"POST" path:ARCreatePendingOrderURL parameters:params];
++ (NSURLRequest *)newOfferRequestWithArtworkID:(NSString *)artworkID
+{
+    return [self graphQLRequestForQuery:[self graphQueryToCreateOffer] variables:@{ @"artworkId": artworkID, @"quantity": @(1) }];
 }
 
 + (NSURLRequest *)newRequestOutbidNotificationRequest
 {
     NSAssert(FALSE, @"STUB");
     return [self requestWithMethod:@"GET" path:@"/api/v1/" parameters:nil];
+}
+
++ (NSURLRequest *)newRequestForBlankPage
+{
+    NSURL *pageURL = [[ARRouter baseWebURL] URLByAppendingPathComponent:@"/dev/blank"];
+    return [NSURLRequest requestWithURL:pageURL];
+}
+
++ (NSURLRequest *)newRequestForPageContent:(NSString *)slug
+{
+    NSString *url = [NSString stringWithFormat:ARPageURLFormat, slug];
+    return [self requestWithMethod:@"GET" path:url parameters:nil];
+}
+
++ (NSURLRequest *)newHEADRequestForPath:(NSString *)path
+{
+    NSString *fullPath = [[NSURL URLWithString:path relativeToURL:[ARRouter baseWebURL]] absoluteString];
+    return [self requestWithMethod:@"HEAD" URLString:fullPath parameters:nil];
+}
+
++ (NSURLRequest *)newSailthruRegisterClickAndDecodeURLRequest:(NSURL *)encodedURL;
+{
+    return [self requestWithMethod:@"HEAD" URLString:encodedURL.absoluteString parameters:nil];
 }
 
 @end

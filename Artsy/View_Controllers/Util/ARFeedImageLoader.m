@@ -1,5 +1,10 @@
 #import "ARFeedImageLoader.h"
 
+#import "ARFonts.h"
+
+#import "UIImage+ImageFromColor.h"
+#import "UIImageView+AsyncImageLoading.h"
+
 // From the gravity source
 
 //version :small, if: :is_processing_delayed? do
@@ -110,7 +115,7 @@ static NSString *ARImageSizeMasonry = @"tall";
 
 + (UIImage *)defaultPlaceholder
 {
-    return [UIImage imageFromColor:[UIColor artsyLightGrey]];
+    return [UIImage imageFromColor:[UIColor artsyGrayRegular]];
 }
 
 + (UIImage *)bestAvailableCachedImageForBaseURL:(NSURL *)url

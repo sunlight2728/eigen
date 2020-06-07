@@ -1,7 +1,16 @@
 #import "AREmbeddedModelPreviewViewController.h"
+
+#import "Artist.h"
+#import "Artwork.h"
 #import "ARAspectRatioImageView.h"
 #import "ARSharingController.h"
+#import "FeaturedLink.h"
+#import "User.h"
+#import "ARNetworkErrorManager.h"
 
+#import "UIImageView+AsyncImageLoading.h"
+
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
 
 @interface AREmbeddedModelPreviewViewController ()
 
@@ -77,7 +86,7 @@
         return [self previewActionItemsForArtwork:(Artwork *)self.object];
     }
 
-    return nil;
+    return @[];
 }
 
 - (NSArray<id<UIPreviewActionItem>> *)previewActionItemsForArtwork:(Artwork *)artwork
@@ -85,10 +94,6 @@
     UIPreviewAction *shareAction = [UIPreviewAction actionWithTitle:@"Share" style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *_Nonnull action, UIViewController *_Nonnull previewViewController) {
         [self tappedShare];
     }];
-
-    if ([User isTrialUser]) {
-        return @[ shareAction ];
-    }
 
     NSString *favoriteText = @"Favorite";
     UIPreviewActionStyle favoriteActionStyle = UIPreviewActionStyleDefault;
@@ -122,7 +127,7 @@
     }
 
     if ([self.object respondsToSelector:@selector(defaultImage)]) {
-        Image *image = [self.object defaultImage];
+        Image *image = [(id)self.object defaultImage];
         return CGSizeMake(image.originalWidth, image.originalHeight);
     }
 
@@ -133,13 +138,6 @@
 
 - (void)tappedFavorite
 {
-    if ([User isTrialUser]) {
-        [ARTrialController presentTrialWithContext:ARTrialContextFavoriteArtwork success:^(BOOL newUser) {
-            [self tappedFavorite];
-        }];
-        return;
-    }
-
     if ([self.object isKindOfClass:Artwork.class]) {
         Artwork *artwork = (Artwork *)self.object;
         BOOL isHearted = artwork.heartStatus == ARHeartStatusYes ? YES : NO;
@@ -151,13 +149,6 @@
 
 - (void)tappedFollow
 {
-    if ([User isTrialUser]) {
-        [ARTrialController presentTrialWithContext:ARTrialContextFavoriteArtwork success:^(BOOL newUser) {
-            [self tappedFollow];
-        }];
-        return;
-    }
-
     if ([self.object isKindOfClass:Artwork.class]) {
         Artwork *artwork = (Artwork *)self.object;
         [artwork.artist setFollowState:!artwork.artist.followed success:nil failure:^(NSError *error) {

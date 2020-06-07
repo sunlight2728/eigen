@@ -1,8 +1,12 @@
+#import "FeaturedLink.h"
 
+#import "ARMacros.h"
 
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @interface FeaturedLink ()
 @property (nonatomic, copy, readonly) NSString *urlFormatString;
+@property (readwrite, nonatomic, copy) NSString *href;
 @end
 
 
@@ -27,12 +31,12 @@
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(FeaturedLink.new, featuredLinkID) : @"id",
-        @keypath(FeaturedLink.new, urlFormatString) : @"image_url",
-        @keypath(FeaturedLink.new, title) : @"title",
-        @keypath(FeaturedLink.new, subtitle) : @"subtitle",
-        @keypath(FeaturedLink.new, href) : @"href",
-        @keypath(FeaturedLink.new, displayOnMobile) : @"display_on_mobile"
+        ar_keypath(FeaturedLink.new, featuredLinkID) : @"id",
+        ar_keypath(FeaturedLink.new, urlFormatString) : @"image_url",
+        ar_keypath(FeaturedLink.new, title) : @"title",
+        ar_keypath(FeaturedLink.new, subtitle) : @"subtitle",
+        ar_keypath(FeaturedLink.new, href) : @"href",
+        ar_keypath(FeaturedLink.new, displayOnMobile) : @"display_on_mobile"
     };
 }
 
@@ -80,6 +84,11 @@
 - (NSUInteger)hash
 {
     return self.featuredLinkID.hash;
+}
+
+- (NSString *)href
+{
+    return [_href stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
 }
 
 @end

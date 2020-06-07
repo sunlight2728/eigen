@@ -1,51 +1,86 @@
 ## Getting Setup
 
-### Fork and Clone
+### Prerequisites
 
-Fork https://github.com/artsy/eigen and clone it locally.
+You'll need [Node](https://nodejs.org/en/) and [Yarn](https://yarnpkg.com/en/) installed. The Node version should match [the `engine` version here](https://github.com/artsy/emission/blob/master/package.json).
 
-### Ruby dependencies
+### Xcode Version
 
-Install the CocoaPods ruby gem.
+Currently we require developers to use Xcode 11, with the latest version (11.3) recommended. You can find all versions of Xcode from [Apple's Developer Portal 🔐](http://developer.apple.com/download/more/).
+
+### Clone
+
+Follow the instructions in [the README](https://github.com/artsy/eigen).
+
+### Running Tests
+
+We can only run tests in one specific environment, today that is iPhone X with the iOS 12.4 Simulator. This is because we use visual snapshots for UI regressions.
+
+You can install the iOS 12 SDK by opening Xcode's preferences, going to "Components" then downloading "12.4".
+
+<p align="center">
+  <img src="screenshots/install-ios-12.png" />
+</p>
+
+Once it's all downloaded, it will show up in the dropdown in the top left corner.
+
+<p align="center">
+  <img src="screenshots/simulator-window.png" />
+</p>
+
+#### To run test in Xcode
+
+Tap `cmd + u` to run all tests, use `ctrl + alt + cmd + g` to run the last set you clicked on via the GUI.
+
+#### Command line
+
+You can run tests via the CLI using:
+
+```sh
+make test
+```
+
+#### Updating snapshots
+
+We use [Nimble-Snapshots](https://github.com/ashfurrow/Nimble-Snapshots) to take screenshots while running tests and
+these screenshots are checked in to the source control. When you change e.g. the background color of a particular
+button, it calculates the diff between two screenshots and makes the test fail if the delta is above a certain
+threshold.
+
+In order to update existing screenshots, replace individual calls to `haveValidSnapshot()` with `recordSnapshot()`,
+or you can change `switchChecksWithRecords` to `true` in `HaveValidSnapshot.swift` (this is a CocoaPod, Xcode will
+warn you about changing a locked file). The location of the file could be looked up by:
 
 ```
-bundle install
+tree -f Pods | grep HaveValidSnapshot
 ```
 
-Now run `bundle exec pod install` in the root directory. This will grab all our external libraries.
-
-Once the `pod install` is complete, it will create the `Artsy.xcworkspace` file that you should open in Xcode.
-Workspaces hold Projects, and we have two projects; one for Artsy and one for CocoaPods.
-
-
+For updating Objective-C snapshots, you'll need to do the same work but on a file named `EXPMatchers+FBSnapshotTest.m`.
 ### Certificates
 
-Login as **it@artsymail.com** to [Certificates, Identities and Profiles](https://developer.apple.com/account/overview.action).
+We use Xcode's auto-codesigning. It should magically "just work" if you log in to Xcode with an iTunes account
+which is on the Artsy team.
 
-* Invite yourself as a new admin member of the team from the [Member Center](https://developer.apple.com/membercenter/index.action#allpeople).
+We have [cert troubleshooting here](https://github.com/artsy/eigen/blob/master/docs/certs.md)
 
-Obtain a certificate for iOS development:
+### Connecting a device
 
-* Open Keychain Tool, Certificate Assisistant, Request a Certificate from a Certification Authority.
-* Save the request to disk.
-* [Create a new Certificate](https://developer.apple.com/account/ios/certificate/certificateCreate.action), use the CSR generated above.
-* Have the admin approve your certificate.
+Xcode will prompt you to join a team, then to enable the device for development. When If you have to choose a team, choose _Art.sY Inc._.
 
-Connect a device.
+### Reading more
 
-Xcode will prompt you to join a team, then to enable the device for development. When prompted, choose the uppercase *ART.SY INC.* team.
+Learn about what things are architecturally [here](https://github.com/artsy/eigen/blob/master/docs/overview.md), then move [to the blog.](http://artsy.github.io/blog/categories/eigen/) for more in-depth discussions on Eigen.
 
-Choose Preferences, Accounts, which should list your Apple ID and membership.
+## Use the developer springboard function
 
-Choose Window, Organizer, which should list your device. The provisioning profile in the Provisioning Profiles tab under the device should include *iOS Team Provisioning Profile: net.artsy.artsy.dev* and *net.artsy.artsy.beta*. You may need to download these from Certificaties, Identifiers && Profiles.
+Edit `Artsy/Classes/View Controllers/ARTopMenuViewController+DeveloperExtras.m` with any custom code that you would like to run on application startup. For example, you may want to load a specific Fair with the following code.
 
-### Run Tests
-
-In Xcode/AppCode:
-Tap `cmd + u` to run all tests, use `ctrl + alt + cmd + g` to run the last set you clicked on via the GUI. Tests _need_ to be ran on an iPhone 4s in iOS 7.
-
-Command line:
+```objc
+- (void)runDeveloperExtras
+{
+    UIViewController *controller = [ARSwitchBoard loadFairWithID:@"the-armory-show-2014"];
+    [self.navigationViewController pushViewController:controller animated:YES];
+}
 ```
-make clean
-make
-```
+
+Run `git update-index --assume-unchanged "Artsy/Classes/View Controllers/ARTopMenuViewController+DeveloperExtras.m"` to ignore changes on this file.

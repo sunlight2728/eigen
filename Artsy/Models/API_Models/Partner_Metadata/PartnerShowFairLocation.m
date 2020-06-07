@@ -1,5 +1,8 @@
+#import "PartnerShowFairLocation.h"
 
+#import "ARMacros.h"
 
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @interface PartnerShowFairLocation ()
 @end
@@ -10,7 +13,7 @@
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(PartnerShowFairLocation.new, mapPoints) : @"map_points",
+        ar_keypath(PartnerShowFairLocation.new, mapPoints) : @"map_points",
     };
 }
 

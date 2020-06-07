@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Artsy</string>
+	<string>${SPRINGBOARD_DISPLAY_NAME}</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -36,12 +36,14 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.3.0</string>
+	<string>6.4.7</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>fb308278682573501</string>
@@ -66,31 +68,60 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>2015.10.07</string>
+	<string>2019.05.24.09</string>
 	<key>FacebookAppID</key>
 	<string>308278682573501</string>
 	<key>FacebookDisplayName</key>
 	<string>Artsy</string>
 	<key>GITCommitRev</key>
-	<string>52a49fe</string>
+	<string>4f76194c</string>
 	<key>GITCommitSha</key>
-	<string>52a49fe768773c99690eec982a1c88fcec7c99a9</string>
+	<string>4f76194c59abf0a505458f8b9c61d1aeb35181a8</string>
 	<key>GITRemoteOriginURL</key>
-	<string></string>
+	<string>https://github.com/artsy/eigen.git</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+		<string>comgooglemaps-x-callback</string>
+		<string>fbapi</string>
+		<string>fb-messenger-api</string>
+		<string>fbauth2</string>
+		<string>fbshareextension</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>MGLMapboxMetricsEnabledSettingShownInApp</key>
+	<string>YES</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Used for beta testers to collect usage information.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is needed for this experience.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Used to display shows near you</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Using User Location to display nearby shows</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Using User Location to display nearby shows</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Camera access is needed to submit consignments.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photos will be used to gauge the quality of the work you are submitting.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AGaramondPro-BoldItalic.otf</string>
 		<string>AGaramondPro-Bold.otf</string>
 		<string>AGaramondPro-Italic.otf</string>
 		<string>AGaramondPro-Regular.otf</string>
-		<string>ITC_Avant_Garde_Gothic__Demi.ttf</string>
+		<string>AVG65lig.otf</string>
 		<string>AGaramondPro-Semibold.otf</string>
 	</array>
 	<key>UIApplicationShortcutItems</key>
@@ -142,11 +173,14 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
 	<key>UIViewEdgeAntialiasing</key>
 	<true/>
 	<key>UTExportedTypeDeclarations</key>

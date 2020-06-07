@@ -1,4 +1,9 @@
+#import "ARCustomEigenLabels.h"
 
+#import "ARFonts.h"
+
+#import "UILabel+Typography.h"
+#import "UIDevice-Hardware.h"
 
 
 @interface ARLabel (Private)
@@ -14,7 +19,7 @@
     self.lineHeight = 3;
 }
 
-- (void)setTitle:(NSString *)artworkTitle date:(NSString *)date;
+- (void)setTitle:(NSString *)artworkTitle date:(NSString *)date
 {
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     [paragraphStyle setLineSpacing:self.lineHeight];
@@ -75,9 +80,9 @@ static CGFloat ARWarningViewMargin = 8;
 {
     [super setup];
     self.font = [self.font fontWithSize:13];
-    self.textColor = [UIColor artsyHeavyGrey];
+    self.textColor = [UIColor artsyGraySemibold];
     self.textAlignment = NSTextAlignmentCenter;
-    self.backgroundColor = [UIColor artsyAttention];
+    self.backgroundColor = [UIColor artsyYellowRegular];
     UIImage *iconImage = [UIImage imageNamed:@"AttentionIcon"];
     self.attentionSign = [[UIImageView alloc] initWithImage:[iconImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
     [self addSubview:self.attentionSign];
@@ -95,7 +100,7 @@ static CGFloat ARWarningViewMargin = 8;
     [super layoutSubviews];
 
     CGRect frame = self.attentionSign.bounds;
-    frame.origin.x = ((CGRectGetWidth(self.bounds) - self.intrinsicContentSize.width) / 2) - ARWarningViewMargin;
+    frame.origin.x = MAX(0, ((CGRectGetWidth(self.bounds) - self.intrinsicContentSize.width) / 2) - ARWarningViewMargin);
     frame.origin.y = (CGRectGetHeight(self.bounds) - CGRectGetHeight(frame)) / 2;
     self.attentionSign.frame = frame;
     self.attentionSign.tintColor = self.textColor;

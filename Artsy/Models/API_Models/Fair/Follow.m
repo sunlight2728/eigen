@@ -1,12 +1,18 @@
+#import "Follow.h"
 
+#import "Artist.h"
+#import "Profile.h"
 
+#import "ARMacros.h"
+
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @implementation Follow
 
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(Follow.new, followID) : @"id"
+        ar_keypath(Follow.new, followID) : @"id"
     };
 }
 

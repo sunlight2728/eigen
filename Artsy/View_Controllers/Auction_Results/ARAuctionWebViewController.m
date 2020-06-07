@@ -1,5 +1,13 @@
+#import "ARLogger.h"
 #import "ARAuctionWebViewController.h"
 #import "ARAppConstants.h"
+#import <Emission/ARArtworkComponentViewController.h>
+#import "User.h"
+#import "Artwork.h"
+#import "ARSwitchBoard+Eigen.h"
+
+#import "UIDevice-Hardware.h"
+
 
 @implementation ARAuctionWebViewController
 
@@ -50,18 +58,36 @@
 
 - (WKNavigationActionPolicy)shouldLoadNavigationAction:(WKNavigationAction *)navigationAction;
 {
-    if (navigationAction.navigationType == WKNavigationTypeOther
-        && ([navigationAction.request.URL.fragment isEqualToString:@"confirm-bid"]
-            || [navigationAction.request.URL.lastPathComponent isEqualToString:@"confirm-bid"])) {
-        [self bidHasBeenConfirmed];
-        return WKNavigationActionPolicyCancel;
-    } else if (navigationAction.navigationType == WKNavigationTypeOther
-        && [navigationAction.request.URL.lastPathComponent isEqualToString:@"confirm-registration"]) {
-        [self registrationHasBeenConfirmed];
-        return WKNavigationActionPolicyCancel;
-    } else {
-        return [super shouldLoadNavigationAction:navigationAction];
+    if (navigationAction.navigationType == WKNavigationTypeOther) {
+        NSURL *URL = navigationAction.request.URL;
+        // martsy uses the fragment, force uses a path component
+        if ([URL.fragment isEqualToString:@"confirm-bid"] || [URL.lastPathComponent isEqualToString:@"confirm-bid"]) {
+            [self bidHasBeenConfirmed];
+            return WKNavigationActionPolicyCancel;
+        }
+        if ([URL.lastPathComponent isEqualToString:@"confirm-registration"]) {
+            [self registrationHasBeenConfirmed];
+            return WKNavigationActionPolicyCancel;
+        }
     }
+    return [super shouldLoadNavigationAction:navigationAction];
+}
+
+// On Force you can directly bid on a work from the auction overview. If that’s the case, then insert the artwork view
+// into the stack for the user to return to.
+- (void)ensureArtworkViewControllerIsLowerInStack;
+{
+    NSArray *stack = self.navigationController.viewControllers;
+
+    ARArtworkComponentViewController *artworkViewController = stack[stack.count - 2];
+    if ([artworkViewController isKindOfClass:ARArtworkComponentViewController.class] && [artworkViewController.artworkID isEqualToString:self.artworkID]) {
+        return;
+    }
+
+    artworkViewController = [ARSwitchBoard.sharedInstance loadArtworkWithID:self.artworkID inFair:nil];
+    NSMutableArray *mutatedStack = [stack mutableCopy];
+    [mutatedStack insertObject:artworkViewController atIndex:stack.count - 1];
+    self.navigationController.viewControllers = mutatedStack;
 }
 
 - (void)bidHasBeenConfirmed;
@@ -74,16 +100,16 @@
 
     [nc postNotificationName:ARAuctionArtworkBidUpdatedNotification
                       object:self
-                    userInfo:@{ ARAuctionIDKey:self.auctionID, ARAuctionArtworkIDKey: self.artworkID }];
+                    userInfo:@{ARAuctionIDKey : self.auctionID, ARAuctionArtworkIDKey : self.artworkID}];
 
+    [self ensureArtworkViewControllerIsLowerInStack];
     [self.navigationController popViewControllerAnimated:ARPerformWorkAsynchronously];
 }
 
 - (void)artworkBidUpdated:(NSNotification *)notification;
 {
     NSDictionary *info = notification.userInfo;
-    if ([info[ARAuctionIDKey] isEqualToString:self.auctionID]
-            && (self.artworkID == nil || [info[ARAuctionArtworkIDKey] isEqualToString:self.artworkID])) {
+    if ([info[ARAuctionIDKey] isEqualToString:self.auctionID] && (self.artworkID == nil || [info[ARAuctionArtworkIDKey] isEqualToString:self.artworkID])) {
         ARActionLog(@"Will reload due to auction artwork bid updated: %@ - auction:%@ - artwork:%@",
                     self, self.auctionID, self.artworkID);
         [self reload];
@@ -100,9 +126,13 @@
 
     [nc postNotificationName:ARAuctionArtworkRegistrationUpdatedNotification
                       object:self
-                    userInfo:@{ ARAuctionIDKey:self.auctionID }];
+                    userInfo:@{ARAuctionIDKey : self.auctionID}];
 
-    [self.navigationController popViewControllerAnimated:ARPerformWorkAsynchronously];
+    if (self.presentingViewController) {
+        [self.presentingViewController dismissViewControllerAnimated:ARPerformWorkAsynchronously completion:nil];
+    } else {
+        [self.navigationController popViewControllerAnimated:ARPerformWorkAsynchronously];
+    }
 }
 
 - (void)registrationUpdated:(NSNotification *)notification;

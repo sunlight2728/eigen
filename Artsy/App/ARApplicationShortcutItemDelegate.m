@@ -1,7 +1,10 @@
 #import "ARApplicationShortcutItemDelegate.h"
+
+#import "ARAppConstants.h"
 #import "ARTopMenuViewController.h"
 #import "ARNavigationController.h"
-#import "ARFavoritesViewController.h"
+#import "User.h"
+#import "ARSwitchBoard.h"
 
 
 @implementation ARApplicationShortcutItemDelegate
@@ -31,28 +34,12 @@
 
 - (void)openSearch
 {
-    ARNavigationController *rootNavigationController = [[ARTopMenuViewController sharedController] rootNavigationController];
-    [rootNavigationController search:self];
+    [[ARTopMenuViewController sharedController] showSearch];
 }
 
 - (void)openFavorites
 {
-    ARNavigationController *rootNavigationController = [[ARTopMenuViewController sharedController] rootNavigationController];
-
-    if (!ARIsRunningInDemoMode && [User isTrialUser]) {
-        ARTrialContext context = ARTrialContextShowingFavorites;
-        [ARTrialController presentTrialWithContext:context success:^(BOOL newUser) {
-            if (newUser) {
-                [[ARTopMenuViewController sharedController].tabContentView setCurrentViewIndex:ARTopTabControllerIndexFeed animated:NO];
-                
-            } else {
-                [rootNavigationController pushViewController:[[ARFavoritesViewController alloc] init] animated:NO];
-            }
-        }];
-        return;
-    }
-
-    [rootNavigationController pushViewController:[[ARFavoritesViewController alloc] init] animated:NO];
+    [[ARTopMenuViewController sharedController] showFavs];
 }
 
 @end

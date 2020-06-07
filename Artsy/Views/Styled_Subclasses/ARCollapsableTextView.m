@@ -1,5 +1,10 @@
 #import "ARCollapsableTextView.h"
 
+#import "ARFonts.h"
+
+#import <UIView+BooleanAnimations/UIView+BooleanAnimations.h>
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+
 static const CGFloat ARCollapsableTextViewHeight = 80;
 
 
@@ -21,7 +26,7 @@ static const CGFloat ARCollapsableTextViewHeight = 80;
     if (self) {
         _collapsedHeight = ARCollapsableTextViewHeight;
 
-        _heightCollapsingConstraint = [[self constrainHeight:@(_collapsedHeight).stringValue] lastObject];
+        _heightCollapsingConstraint = [self constrainHeight:@(_collapsedHeight).stringValue];
         self.heightCollapsingConstraint.active = NO;
     }
     return self;
@@ -33,7 +38,7 @@ static const CGFloat ARCollapsableTextViewHeight = 80;
 
     CGFloat fullHeight = ceilf([self sizeThatFits:self.frame.size].height);
 
-    _fullHeightConstraint = [[self constrainHeight:@(fullHeight).stringValue] lastObject];
+    _fullHeightConstraint = [self constrainHeight:@(fullHeight).stringValue];
 
     if (attributedText && !self.tapGesture) {
         // Only show the more indicator if the height of the text exceeds the height of the constraint.
@@ -53,7 +58,7 @@ static const CGFloat ARCollapsableTextViewHeight = 80;
             [self.collapsedOverlapView constrainHeight:@"8"];
 
             UIView *border = [[UIView alloc] init];
-            border.backgroundColor = [UIColor artsyMediumGrey];
+            border.backgroundColor = [UIColor artsyGrayMedium];
             [self.collapsedOverlapView addSubview:border];
             [border constrainWidthToView:self predicate:@"0"];
             [border alignTopEdgeWithView:_collapsedOverlapView predicate:@"0"];

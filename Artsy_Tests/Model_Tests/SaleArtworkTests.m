@@ -1,5 +1,9 @@
 SpecBegin(SaleArtwork);
 
+before(^{
+    [SaleArtwork class];
+});
+
 describe(@"artwork for sale", ^{
     __block SaleArtwork *_saleArtwork;
 
@@ -10,13 +14,13 @@ describe(@"artwork for sale", ^{
     it(@"has default state", ^{
         expect([_saleArtwork auctionState]).to.equal(ARAuctionStateDefault);
     });
-    
-    it(@"says it has no estimate when there is no min/max estimate", ^{
+
+    it(@"says it has no estimate when there is no min/max/point estimate", ^{
         _saleArtwork = [[SaleArtwork alloc] init];
         expect(_saleArtwork.hasEstimate).to.beFalsy();
     });
     
-    it(@"says it has an estimate when there is no min/max estimate", ^{
+    it(@"says it has an estimate when there is a min/max/point estimate", ^{
         _saleArtwork = [SaleArtwork modelWithJSON:@{@"high_estimate_cents" : @20000}];
         expect(_saleArtwork.hasEstimate).to.beTruthy();
 
@@ -25,30 +29,53 @@ describe(@"artwork for sale", ^{
 
         _saleArtwork = [SaleArtwork modelWithJSON:@{@"high_estimate_cents" : @20000, @"low_estimate_cents" : @10000}];
         expect(_saleArtwork.hasEstimate).to.beTruthy();
+
+        _saleArtwork = [SaleArtwork modelWithJSON:@{@"estimate_cents": @20000}];
+        expect(_saleArtwork.hasEstimate).to.beTruthy();
     });
     
     describe(@"estimate string", ^{
         
         it(@"returns a string showing both low and high ", ^{
-            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"high_estimate_cents" : @20000, @"low_estimate_cents" : @10000}];
-            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $100 – $200");
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"high_estimate_cents" : @20000, @"low_estimate_cents" : @10000, @"currency" : @"USD", @"symbol" : @"$"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $100 – $200 USD");
+        });
+
+        it(@"returns a string showing point estimate", ^{
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"estimate_cents" : @20000, @"currency" : @"USD", @"symbol" : @"$"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $200 USD");
+        });
+
+        it(@"prefers point estimates to only a low or high estimate", ^{
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"estimate_cents" : @20000, @"low_estimate_cents" : @10000, @"currency" : @"USD", @"symbol" : @"$"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $200 USD");
+
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"estimate_cents" : @20000, @"high_estimate_cents" : @30000, @"currency" : @"USD", @"symbol" : @"$"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $200 USD");
         });
         
         it(@"returns a string showing low if available ", ^{
-            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"low_estimate_cents" : @10000}];
-            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $100");
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"low_estimate_cents" : @10000, @"currency" : @"USD", @"symbol" : @"$"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $100 USD");
         });
         
         it(@"returns a string showing high if available", ^{
-            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"high_estimate_cents" : @100000}];
-            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $1,000");
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"high_estimate_cents" : @100000, @"currency" : @"USD", @"symbol" : @"$"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: $1,000 USD");
         });
+
+        it(@"handles GBP string showing high if available", ^{
+            _saleArtwork = [SaleArtwork modelWithJSON:@{ @"high_estimate_cents" : @100000, @"currency" : @"GBP", @"symbol" : @"£"}];
+            expect(_saleArtwork.estimateString).to.equal(@"Estimate: £1,000 GBP");
+        });
+
     });
 
     describe(@"with a bidder", ^{
         beforeEach(^{
             _saleArtwork.auction = nil;
             _saleArtwork.bidder = [[Bidder alloc] init];
+            _saleArtwork.bidder.qualifiedForBidding = YES;
         });
 
         it(@"sets user is registered state", ^{
@@ -62,7 +89,7 @@ describe(@"artwork for sale", ^{
         });
 
         it(@"does not change state", ^{
-            expect([_saleArtwork auctionState]).to.equal(ARAuctionStateDefault);
+            expect([_saleArtwork auctionState]).to.equal(ARAuctionStateShowingPreview);
         });
     });
 
@@ -76,15 +103,30 @@ describe(@"artwork for sale", ^{
         });
     });
 
-    describe(@"with an auction that has ended", ^{
+    describe(@"with an auction that has closed", ^{
         beforeEach(^{
-            _saleArtwork.auction = [Sale saleWithStart:[NSDate distantPast] end:[NSDate distantPast]];
+            _saleArtwork.auction = [Sale modelWithJSON:@{ @"auction_state" : @"closed"}];
         });
 
         it(@"sets auction ended state", ^{
-            expect([_saleArtwork auctionState]).to.equal(ARAuctionStateStarted | ARAuctionStateEnded);
+            expect([_saleArtwork auctionState]).to.equal(ARAuctionStateEnded);
         });
     });
+
+    describe(@"with an auction that has closed with no set end date", ^{
+        beforeEach(^{
+            _saleArtwork.auction = [Sale modelWithJSON:@{
+               @"auction_state" : @"closed",
+               @"startDate" : [NSDate distantPast],
+               @"endDate" : [NSNull null]
+           }];
+        });
+
+        it(@"sets auction ended state", ^{
+            expect([_saleArtwork auctionState]).to.equal(ARAuctionStateEnded);
+        });
+    });
+
 
     describe(@"with a bid", ^{
         beforeEach(^{
@@ -133,6 +175,14 @@ describe(@"artwork for sale", ^{
         it(@"sets max bidder position", ^{
             expect([_saleArtwork userMaxBidderPosition]).to.equal(_position);
         });
+    });
+
+    it(@"formats small numbers correctly", ^{
+        expect([SaleArtwork dollarsFromCents:@(500) currencySymbol:@"$"]).to.equal(@"$5");
+    });
+
+    it(@"formats large numbers correctly", ^{
+        expect([SaleArtwork dollarsFromCents:@(500000000) currencySymbol:@"$"]).to.equal(@"$5,000,000");
     });
 });
 

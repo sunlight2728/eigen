@@ -1,11 +1,24 @@
-#import <JLRoutes/JLRoutes.h>
 #import "ARExternalWebBrowserViewController.h"
+#import "ARWebViewCacheHost.h"
+#import "ARSwitchBoard.h"
+#import "ARSwitchBoard+Eigen.h"
+#import "ARLogger.h"
+#import "ARExternalWebBrowserViewController.h"
+
+#import "ARNavigationController.h"
+#import "ARScrollNavigationChief.h"
+
+#import "UIDevice-Hardware.h"
+
 #import <FLKAutoLayout/UIViewController+FLKAutoLayout.h>
+#import <JLRoutes/JLRoutes.h>
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+#import "ARDispatchManager.h"
 
+#import <CoreServices/CoreServices.h>
 
-@interface ARExternalWebBrowserViewController () <UIGestureRecognizerDelegate, UIScrollViewDelegate>
+@interface ARExternalWebBrowserViewController () <UIGestureRecognizerDelegate, UIScrollViewDelegate, WKUIDelegate>
 @property (nonatomic, readonly, strong) UIGestureRecognizer *gesture;
-@property (nonatomic, readonly, strong) NSURL *initialURL;
 @end
 
 
@@ -28,6 +41,7 @@
     // So we can separate init, from view loading
     _initialURL = url;
     self.automaticallyAdjustsScrollViewInsets = NO;
+    _statusBarStyle = UIStatusBarStyleDefault;
 
     return self;
 }
@@ -46,7 +60,10 @@
 {
     [super viewDidLoad];
 
-    WKWebView *webView = [[WKWebView alloc] initWithFrame:self.view.bounds];
+    ARWebViewCacheHost *webviewCache = [[ARWebViewCacheHost alloc] init];
+    WKWebView *webView = [webviewCache dequeueWebView];
+
+    webView.frame = self.view.bounds;
     webView.navigationDelegate = self;
     [self.view addSubview:webView];
 
@@ -54,16 +71,39 @@
     [webView loadRequest:initialRequest];
 
     UIScrollView *scrollView = webView.scrollView;
-    scrollView.delegate = self;
     scrollView.decelerationRate = UIScrollViewDecelerationRateNormal;
+
     // Work around bug in WKScrollView by setting private ivar directly: http://trac.webkit.org/changeset/188541
-    // Once this has been fixed, we can’t completely disable this workaround, only for those OS versions with the fix.
-    NSString *decelerationRateKey = [NSString stringWithFormat:@"%@%@ollDecelerationFactor", @"_pre", @"ferredScr"];
-    NSAssert([[scrollView valueForKey:decelerationRateKey] doubleValue] < (UIScrollViewDecelerationRateNormal - 0.001),
-             @"Expected the private value to not change, maybe this bug has been fixed?");
-    [scrollView setValue:@(UIScrollViewDecelerationRateNormal) forKey:decelerationRateKey];
+    // This is fixed in iOS 10, but iOS 9 still needs the fix.
+    if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){9, 0, 0}] &&
+        ![[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){10, 0, 0}]) {
+#ifndef DEBUG
+        @try {
+#endif
+            NSString *factorKey = [NSString stringWithFormat:@"%@%@ollDecelerationFactor", @"_pre", @"ferredScr"];
+            [scrollView setValue:@(UIScrollViewDecelerationRateNormal) forKey:factorKey];
+#ifndef DEBUG
+        }
+        @catch (NSException *exception) {
+            ARErrorLog(@"Unable to apply workaround for WebKit bug: %@", exception);
+        }
+#endif
+    }
 
     _webView = webView;
+    _webView.UIDelegate = self;
+}
+
+- (void)willMoveToParentViewController:(UIViewController *)parent;
+{
+    [super willMoveToParentViewController:parent];
+    self.scrollView.delegate = [parent isKindOfClass:ARNavigationController.class] ? self : nil;
+}
+
+
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return self.statusBarStyle;
 }
 
 - (void)viewWillLayoutSubviews
@@ -71,13 +111,6 @@
     [self.webView constrainTopSpaceToView:self.flk_topLayoutGuide predicate:@"0"];
     [self.webView alignLeading:@"0" trailing:@"0" toView:self.view];
     [self.webView alignBottomEdgeWithView:self.view predicate:@"0"];
-}
-
-- (void)viewWillAppear:(BOOL)animated
-{
-    [super viewWillAppear:animated];
-
-    [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -109,7 +142,9 @@
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    [[ARScrollNavigationChief chief] scrollViewDidScroll:scrollView];
+    if ([self.navigationController isKindOfClass:ARNavigationController.class]) {
+        [[ARScrollNavigationChief chief] scrollViewDidScroll:scrollView];
+    }
 }
 
 #pragma mark UIGestureRecognizerDelegate
@@ -121,6 +156,22 @@
 
 #pragma mark WKWebViewDelegate
 
+- (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures
+{
+  if (!navigationAction.targetFrame.isMainFrame) {
+    NSURL *URL = navigationAction.request.URL;
+    ARSwitchBoard *switchboard = ARSwitchBoard.sharedInstance;
+    if ([switchboard canRouteURL:URL]) {
+      UIViewController *controller = [switchboard loadURL:URL];
+      if (controller) {
+        [self.navigationController pushViewController:controller animated:YES];
+      }
+    }
+  }
+
+  return nil;
+}
+
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler;
 {
     decisionHandler([self shouldLoadNavigationAction:navigationAction]);
@@ -130,12 +181,41 @@
 {
     if (navigationAction.navigationType == WKNavigationTypeLinkActivated) {
         NSURL *URL = navigationAction.request.URL;
-        if ([JLRoutes canRouteURL:URL]) {
-            [JLRoutes routeURL:URL];
+        ARSwitchBoard *switchboard = ARSwitchBoard.sharedInstance;
+        if ([switchboard canRouteURL:URL]) {
+            UIViewController *controller = [switchboard loadURL:URL];
+            if (controller) {
+                [switchboard presentViewController:controller];
+            }
             return WKNavigationActionPolicyCancel;
         }
     }
     return WKNavigationActionPolicyAllow;
+}
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler;
+{
+    decisionHandler([self shouldLoadNavigationResponse:navigationResponse]);
+}
+
+- (WKNavigationResponsePolicy)shouldLoadNavigationResponse:(WKNavigationResponse *)navigationResponse;
+{
+    if ([navigationResponse.response isKindOfClass:NSHTTPURLResponse.class]) {
+        NSHTTPURLResponse *response = (id)navigationResponse.response;
+        if (![navigationResponse canShowMIMEType]) {
+            ARSwitchBoard *switchboard = ARSwitchBoard.sharedInstance;
+            [switchboard openURLInExternalService:response.URL];
+
+            // Go back to whatever page you're on, because otherwise you just have a white screen
+            ar_dispatch_after(0.5, ^{
+                [self.navigationController popViewControllerAnimated:YES];
+            });
+
+            return WKNavigationResponsePolicyCancel;
+        }
+    }
+
+    return WKNavigationResponsePolicyAllow;
 }
 
 - (BOOL)shouldAutorotate

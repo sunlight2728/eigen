@@ -1,14 +1,27 @@
 #import "ARArtistFavoritesNetworkModel.h"
 
+#import "ArtsyAPI+ListCollection.h"
+#import "ArtsyAPI+OrderedSets.h"
+#import "OrderedSet.h"
+#import "Artist.h"
+
 
 @implementation ARArtistFavoritesNetworkModel
 
-- (void)performNetworkRequestAtPage:(NSInteger)page withSuccess:(void (^)(NSArray *artists))success failure:(void (^)(NSError *error))failure
+- (AFHTTPRequestOperation *)requestOperationAtPage:(NSInteger)page withSuccess:(void (^)(NSArray *artists))success failure:(void (^)(NSError *error))failure
 {
     if (self.useSampleFavorites) {
-        [ArtsyAPI getArtistsFromSampleAtPage:page success:success failure:failure];
+        __weak typeof(self) wself = self;
+
+        return [ArtsyAPI getOrderedSetWithKey:@"personalize:suggested-artists" success:^(OrderedSet *set) {
+            if (!wself) { return; }
+
+            [ArtsyAPI getOrderedSetItems:set.orderedSetID.copy atPage:page withType:Artist.class success:success failure:failure];
+
+        } failure:failure];
+
     } else {
-        [ArtsyAPI getArtistsFromPersonalCollectionAtPage:page success:success failure:failure];
+        return [ArtsyAPI getArtistsFromPersonalCollectionAtPage:page success:success failure:failure];
     }
 }
 

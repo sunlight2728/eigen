@@ -1,16 +1,14 @@
 #import "ARTopMenuNavigationDataSource.h"
 #import "ARNavigationController.h"
-#import "ARBrowseViewController.h"
-#import "ARFavoritesViewController.h"
-#import "ARShowFeedViewController.h"
+
 #import "ArtsyAPI.h"
 #import "ArtsyAPI+Artworks.h"
 
+#import <Emission/ARHomeComponentViewController.h>
+#import <Emission/ARFavoritesComponentViewController.h>
 
 @interface ARTopMenuNavigationDataSource (Testing)
 @property (readonly, nonatomic, strong) ARNavigationController *feedNavigationController;
-@property (readonly, nonatomic, strong) ARNavigationController *browseNavigationController;
-- (ARNavigationController *)favoritesNavigationController;
 @end
 
 
@@ -22,10 +20,10 @@ before(^{
     navDataSource = [[ARTopMenuNavigationDataSource alloc] init];
 });
 
-it(@"uses a single feed vc", ^{
+it(@"uses the same home feed vc", ^{
     ARNavigationController *navigationController = [navDataSource feedNavigationController];
     UIViewController *rootVC = [[navigationController viewControllers] objectAtIndex:0];
-    expect(rootVC).to.beKindOf([ARShowFeedViewController class]);
+    expect(rootVC).to.beKindOf(ARHomeComponentViewController.class);
 
     ARNavigationController *newNavigationController = [navDataSource feedNavigationController];
     UIViewController *newRootVC = [[newNavigationController viewControllers] objectAtIndex:0];
@@ -33,58 +31,61 @@ it(@"uses a single feed vc", ^{
     expect(newRootVC).to.equal(rootVC);
 });
 
-
-it(@"uses a single browse vc", ^{
-    ARNavigationController *navigationController = [navDataSource browseNavigationController];
+it(@"uses a single profile vc", ^{
+    ARNavigationController *navigationController = [navDataSource profileNavigationController];
     UIViewController *rootVC = [[navigationController viewControllers] objectAtIndex:0];
-    expect(rootVC).to.beKindOf([ARBrowseViewController class]);
+    expect(rootVC).to.beKindOf(ARComponentViewController.class);
 
-    ARNavigationController *newNavigationController = [navDataSource browseNavigationController];
+    ARNavigationController *newNavigationController = [navDataSource profileNavigationController];
     UIViewController *newRootVC = [[newNavigationController viewControllers] objectAtIndex:0];
     expect(newNavigationController).to.equal(navigationController);
     expect(newRootVC).to.equal(rootVC);
 });
 
-// TODO: use the same favorites VC. Requires fixing collection view bug.
-pending(@"uses a single favorites vc", ^{
+it(@"generates favorites vc each time", ^{
     ARNavigationController *navigationController = [navDataSource favoritesNavigationController];
     UIViewController *rootVC = [[navigationController viewControllers] objectAtIndex:0];
-    expect(rootVC).to.beKindOf([ARFavoritesViewController class]);
-
-    ARNavigationController *newNavigationController = [navDataSource favoritesNavigationController];
-    UIViewController *newRootVC = [[newNavigationController viewControllers] objectAtIndex:0];
-    expect(newNavigationController).to.equal(navigationController);
-    expect(newRootVC).to.equal(rootVC);
-});
-
-it(@"reinstantiates favorites vc", ^{
-    ARNavigationController *navigationController = [navDataSource favoritesNavigationController];
-    UIViewController *rootVC = [[navigationController viewControllers] objectAtIndex:0];
-    expect(rootVC).to.beKindOf([ARFavoritesViewController class]);
+    expect(rootVC).to.beKindOf([ARFavoritesComponentViewController class]);
 
     ARNavigationController *newNavigationController = [navDataSource favoritesNavigationController];
     UIViewController *newRootVC = [[newNavigationController viewControllers] objectAtIndex:0];
     expect(newNavigationController).notTo.equal(navigationController);
-    expect(newRootVC).to.beKindOf([ARFavoritesViewController class]);
     expect(newRootVC).notTo.equal(rootVC);
 });
 
-describe(@"notifications", ^{
-    it(@"sets the app icon badge to the total amount of available notifications", ^{
-        id appMock = [OCMockObject partialMockForObject:[UIApplication sharedApplication]];
-        [[appMock expect] setApplicationIconBadgeNumber:2];
-        [navDataSource setNotificationCount:1 forControllerAtIndex:ARTopTabControllerIndexFeed];
-        [navDataSource setNotificationCount:1 forControllerAtIndex:ARTopTabControllerIndexNotifications];
-        [appMock verify];
-    });
-    
-    it(@"resets the app icon badge if there are 0 notifications", ^{
-        id appMock = [OCMockObject partialMockForObject:[UIApplication sharedApplication]];
-        [[appMock expect] setApplicationIconBadgeNumber:0];
-        [[UIApplication sharedApplication] setApplicationIconBadgeNumber:42];
-        [navDataSource setNotificationCount:0 forControllerAtIndex:ARTopTabControllerIndexNotifications];
-        [appMock verify];
-    });
+it(@"shows cityGuide tab by default", ^{
+   [AROptions setBool:false forOption:AROptionsMoveCityGuideEnableSales];
+   NSArray *tabOrder = [navDataSource tabOrder];
+   expect(tabOrder).to.contain(@(ARLocalDiscoveryTab));
+   expect(tabOrder).toNot.contain(@(ARSalesTab));
 });
+
+it(@"shows sales tab with option enabled", ^{
+   [AROptions setBool:true forOption:AROptionsMoveCityGuideEnableSales];
+   NSArray *tabOrder = [navDataSource tabOrder];
+   expect(tabOrder).to.contain(@(ARSalesTab));
+   expect(tabOrder).toNot.contain(@(ARLocalDiscoveryTab));
+   [AROptions setBool:false forOption:AROptionsMoveCityGuideEnableSales];
+});
+
+// TODO: Nav Notifications
+//
+//describe(@"notifications", ^{
+//    it(@"sets the app icon badge to the total amount of available notifications", ^{
+//        id appMock = [OCMockObject partialMockForObject:[UIApplication sharedApplication]];
+//        [[appMock expect] setApplicationIconBadgeNumber:2];
+//        [navDataSource setNotificationCount:1 forControllerAtIndex:ARTopTabControllerIndexFeed];
+//        [navDataSource setNotificationCount:1 forControllerAtIndex:ARTopTabControllerIndexNotifications];
+//        [appMock verify];
+//    });
+//    
+//    it(@"resets the app icon badge if there are 0 notifications", ^{
+//        id appMock = [OCMockObject partialMockForObject:[UIApplication sharedApplication]];
+//        [[appMock expect] setApplicationIconBadgeNumber:0];
+//        [[UIApplication sharedApplication] setApplicationIconBadgeNumber:42];
+//        [navDataSource setNotificationCount:0 forControllerAtIndex:ARTopTabControllerIndexNotifications];
+//        [appMock verify];
+//    });
+//});
 
 SpecEnd;

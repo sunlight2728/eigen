@@ -1,16 +1,19 @@
 #import "Location.h"
 
+#import "ARMacros.h"
+
+#import <ReactiveObjC/ReactiveObjC.h>
 
 @implementation Location
 
 + (NSDictionary *)JSONKeyPathsByPropertyKey
 {
     return @{
-        @keypath(Location.new, streetAddress) : @"address",
-        @keypath(Location.new, postalCode) : @"postal_code",
-        @keypath(Location.new, publiclyViewable) : @"publicly_viewable",
-        @keypath(Location.new, latitude) : @"coordinates.lat",
-        @keypath(Location.new, longitude) : @"coordinates.lng",
+        ar_keypath(Location.new, streetAddress) : @"address",
+        ar_keypath(Location.new, postalCode) : @"postal_code",
+        ar_keypath(Location.new, publiclyViewable) : @"publicly_viewable",
+        ar_keypath(Location.new, latitude) : @"coordinates.lat",
+        ar_keypath(Location.new, longitude) : @"coordinates.lng",
     };
 }
 

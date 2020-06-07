@@ -1,5 +1,8 @@
 #import "UIViewController+SimpleChildren.h"
 
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+#import <FLKAutoLayout/UIViewController+FLKAutoLayout.h>
+
 
 @implementation UIViewController (SimpleChildren)
 
@@ -17,6 +20,15 @@
     [view addSubview:controller.view];
 
     [controller didMoveToParentViewController:self];
+}
+
+- (void)ar_addAlignedModernChildViewController:(UIViewController *)controller
+{
+    [self ar_addModernChildViewController:controller];
+    
+    [controller.view constrainTopSpaceToView:self.flk_topLayoutGuide predicate:@"0"];
+    [controller.view alignLeading:@"0" trailing:@"0" toView:self.view];
+    [controller.view constrainBottomSpaceToView:self.flk_bottomLayoutGuide predicate:@"0"];
 }
 
 - (void)ar_addModernChildViewController:(UIViewController *)controller
@@ -59,8 +71,15 @@
 - (void)ar_removeChildViewController:(UIViewController *)controller
 {
     [controller willMoveToParentViewController:nil];
-    [controller removeFromParentViewController];
     [controller.view removeFromSuperview];
+    [controller removeFromParentViewController];
 }
+
+- (void)ar_modernRemoveChildViewController:(UIViewController *)controller
+{
+    [controller willMoveToParentViewController:nil];
+    [controller removeFromParentViewController];
+}
+
 
 @end

@@ -1,15 +1,81 @@
+#import "ArtsyAPI.h"
 #import "ArtsyAPI+Private.h"
+#import "ARAnalyticsConstants.h"
+
+#import "ARAppConstants.h"
+#import "ARDefaults.h"
 #import "ARDispatchManager.h"
+#import "ARRouter.h"
+#import "ARNetworkErrorManager.h"
+#import "ARLogger.h"
+
+#import "MTLModel+JSON.h"
+#import "AFHTTPRequestOperation+JSON.h"
 
 #import <ISO8601DateFormatter/ISO8601DateFormatter.h>
 #import <UICKeyChainStore/UICKeyChainStore.h>
+#import <ObjectiveSugar/ObjectiveSugar.h>
+#import <ARAnalytics/ARAnalytics.h>
+
+#import <Emission/AREmission.h>
+#import <Emission/ARGraphQLQueryCache.h>
+
+NetworkFailureBlock passOnNetworkError(void (^failure)(NSError *))
+{
+    return ^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error) {
+        failure(error);
+    };
+}
+
 
 @implementation ArtsyAPI
 
++ (AFHTTPRequestOperation *)performRequest:(NSURLRequest *)request fullSuccess:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id JSON))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON))failureCallback
+{
+    return [self performRequest:request removeNullsFromResponse:NO fullSuccess:success failure:failureCallback];
+}
+
++ (AFHTTPRequestOperation *)performRequest:(NSURLRequest *)request removeNullsFromResponse:(BOOL)removeNulls fullSuccess:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id JSON))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON))failureCallback
+{
+    AFHTTPRequestOperation *operation = [self.sharedAPI requestOperation:request removeNullsFromResponse:removeNulls success:success failure:failureCallback];
+    [operation start];
+    return operation;
+}
+
++ (AFHTTPRequestOperation *)performGraphQLRequest:(NSURLRequest *)request success:(void (^)(id))success failure:(void (^)(NSError *error))failure
+{
+    return [self performRequest:request removeNullsFromResponse:YES success:^(id json) {
+        // Parse out metadata from GraphQL response.
+        NSArray *errors = json[@"errors"];
+        if (errors) {
+            // GraphQL queries that fail will return 200s but indicate failures with the "errors" key. We need to check them.
+            NSLog(@"Failure fetching GraphQL query: %@", errors);
+            [ARAnalytics event:ARAnalyticsGraphQLResponseError withProperties:json];
+            if (failure) {
+                failure([NSError errorWithDomain:@"GraphQL" code:0 userInfo:json]);
+            }
+            return;
+        }
+        if (success) {
+            success(json);
+        }
+    } failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error) {
+        if (failure) {
+            NSLog(@"Network failure fetching GraphQL query: %@", error);
+            failure(error);
+        }
+    }];
+}
+
 + (AFHTTPRequestOperation *)performRequest:(NSURLRequest *)request success:(void (^)(id))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
 {
+    return [self performRequest:request removeNullsFromResponse:NO success:success failure:failure];
+}
+
++ (AFHTTPRequestOperation *)performRequest:(NSURLRequest *)request removeNullsFromResponse:(BOOL)removeNulls success:(void (^)(id))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+{
     NSParameterAssert(success);
-    return [self.sharedAPI performRequest:request success:success failure:failure];
+    return [self.sharedAPI performRequest:request removeNullsFromResponse:removeNulls success:success failure:failure];
 }
 
 + (AFHTTPRequestOperation *)getRequest:(NSURLRequest *)request parseIntoAClass:(Class)klass success:(void (^)(id))success failure:(void (^)(NSError *error))failure
@@ -53,7 +119,6 @@
     NSArray *newOps = [AFURLConnectionOperation batchOfRequestOperations:operations progressBlock:nil completionBlock:completed];
 
     [[NSOperationQueue mainQueue] addOperations:newOps waitUntilFinished:NO];
-
 }
 
 #pragma mark -
@@ -80,10 +145,10 @@
     if (response.statusCode == 401) {
         NSData *data = error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey];
         NSDictionary *recoverySuggestion = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-        
+
         if ([recoverySuggestion[@"error"] isEqualToString:@"Unauthorized"] && [recoverySuggestion[@"text"] isEqualToString:@"The XAPP token is invalid or has expired."]) {
             ARActionLog(@"Resetting XAPP token after error: %@", error.localizedDescription);
-            [UICKeyChainStore removeItemForKey:ARXAppTokenDefault];
+            [UICKeyChainStore removeItemForKey:ARXAppTokenKeychainKey];
             [ARRouter setXappToken:nil];
         }
     }
@@ -103,13 +168,28 @@
 
 - (AFHTTPRequestOperation *)requestOperation:(NSURLRequest *)request success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id JSON))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON))failure
 {
-    return [AFHTTPRequestOperation JSONRequestOperationWithRequest:request success:success failure:failure];
+    return [AFHTTPRequestOperation JSONRequestOperationWithRequest:request removeNulls:NO success:success failure:failure];
+}
+
+- (AFHTTPRequestOperation *)requestOperation:(NSURLRequest *)request removeNullsFromResponse:(BOOL)removeNulls success:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, id JSON))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON))failure
+{
+    return [AFHTTPRequestOperation JSONRequestOperationWithRequest:request removeNulls:removeNulls success:success failure:failure];
 }
 
 - (AFHTTPRequestOperation *)performRequest:(NSURLRequest *)request success:(void (^)(id))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
 {
+    return [self performRequest:request removeNullsFromResponse:NO success:success failure:failure];
+}
+
+- (AFHTTPRequestOperation *)performRequest:(NSURLRequest *)request removeNullsFromResponse:(BOOL)removeNulls success:(void (^)(id))success failure:(void (^)(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error))failure
+{
     __weak AFHTTPRequestOperation *performOperation = nil;
-    performOperation = [self requestOperation:request success:^(NSURLRequest *request, NSHTTPURLResponse *response, id JSON) {
+    performOperation = [self requestOperation:request removeNullsFromResponse:removeNulls success:^(NSURLRequest *request, NSHTTPURLResponse *response, id JSON) {
+        if ([@[@"POST", @"PUT", @"DELETE"] includes:request.HTTPMethod]) {
+            // Clear the GraphQL cache as if we performed a GraphQL mutation.
+            // See equivalent code in Emission: https://github.com/artsy/emission/blob/a33f7a5a0fc4af49022830290b05901c552a3088/src/lib/relay/middlewares/cacheMiddleware.ts#L53-L55
+            [[[AREmission sharedInstance] graphQLQueryCacheModule] clearAll];
+        }
         success(JSON);
     } failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON) {
         if (failure) {
@@ -126,13 +206,16 @@
 {
     // Check if we already have a token for xapp or oauth and run the block
 
-    NSDate *date = [[NSUserDefaults standardUserDefaults] objectForKey:ARXAppTokenExpiryDateDefault];
-    NSString *xappToken = [UICKeyChainStore stringForKey:ARXAppTokenDefault];
+    NSDate *xappDate = [[NSUserDefaults standardUserDefaults] objectForKey:ARXAppTokenExpiryDateDefault];
+    NSDate *oauthDate = [[NSUserDefaults standardUserDefaults] objectForKey:AROAuthTokenExpiryDateDefault];
+
+
+    NSString *xappToken = [UICKeyChainStore stringForKey:ARXAppTokenKeychainKey];
     NSString *oauthToken = [UICKeyChainStore stringForKey:AROAuthTokenDefault];
 
-    if (date && (xappToken || oauthToken)) {
+    if ((xappDate && xappToken) || (oauthToken && oauthDate)) {
         if (callback) {
-            callback(xappToken ?: oauthToken, date);
+            callback(xappToken ?: oauthToken, xappDate ?: oauthDate);
         }
         return;
     }
@@ -146,7 +229,7 @@
         ISO8601DateFormatter *dateFormatter = [[ISO8601DateFormatter alloc] init];
         NSDate *expiryDate = [dateFormatter dateFromString:date];
 
-        NSString *oldxToken = [UICKeyChainStore stringForKey:ARXAppTokenDefault];
+        NSString *oldxToken = [UICKeyChainStore stringForKey:ARXAppTokenKeychainKey];
         if (oldxToken) {
             if (callback) {
                 callback(token, expiryDate);
@@ -155,7 +238,7 @@
         }
 
         [ARRouter setXappToken:token];
-        [UICKeyChainStore setString:token forKey:ARXAppTokenDefault];
+        [UICKeyChainStore setString:token forKey:ARXAppTokenKeychainKey];
         [[NSUserDefaults standardUserDefaults] setObject:expiryDate forKey:ARXAppTokenExpiryDateDefault];
         [[NSUserDefaults standardUserDefaults] synchronize];
 
@@ -164,7 +247,7 @@
         }
 
     }
-    failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON) {
+        failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON) {
 
         //TODO: handle this less stupid
         ARErrorLog(@"Couldn't get an Xapp token.");
@@ -173,7 +256,7 @@
         [ARNetworkErrorManager presentActiveError:cleanError];
 
         if (failure) { failure(error); }
-    }];
+        }];
 
     [op start];
 }
@@ -185,10 +268,9 @@
 
         NSDictionary *jsonDictionary = JSON;
         id object = nil;
-        if (key) {
-            if (jsonDictionary[key]) {
-                object = [klass modelWithJSON:jsonDictionary[key] error:nil];
-            }
+        if (key && [jsonDictionary valueForKeyPath:key]) {
+            object = [klass modelWithJSON:[jsonDictionary valueForKeyPath:key] error:nil];
+            
         } else {
             object = [klass modelWithJSON:jsonDictionary error:nil];
         }
@@ -259,10 +341,9 @@
                 continue;
             }
 
-            if (key) {
-                if ([dictionary.allKeys containsObject:key]) {
-                    object = [klass modelWithJSON:dictionary[key] error:nil];
-                }
+            if (key && [dictionary valueForKeyPath:key]) {
+                object = [klass modelWithJSON:[dictionary valueForKeyPath:key] error:nil];
+                
             } else {
                 object = [klass modelWithJSON:dictionary error:nil];
             }
@@ -283,7 +364,7 @@
             }
         });
     }];
-    
+
     // Use a background queue so JSON results are parsed off the UI thread. We'll dispatch back to main queue on success.
     getOperation.completionQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     [getOperation start];

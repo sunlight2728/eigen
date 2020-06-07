@@ -1,17 +1,18 @@
-extern NSString *const ARBaseDesktopWebURL;
-extern NSString *const ARBaseMobileWebURL;
+extern NSString *const ARBaseWebURL;
+extern NSString *const ARBaseDeprecatedMobileWebURL;
 extern NSString *const ARBaseApiURL;
-extern NSString *const ARStagingBaseWebURL;
-extern NSString *const ARStagingBaseMobileWebURL;
-extern NSString *const ARStagingBaseApiURL;
+extern NSString *const ARBaseMetaphysicsApiURL;
+extern NSString *const ARCausalitySocketURL;
+extern NSString *const ARStagingBaseDeprecatedMobileWebURL;
 
 extern NSString *const ARPersonalizePath;
 
 extern NSString *const ARTwitterCallbackPath;
 
-extern NSString *const ARArtsyXCallbackUrlScheme;
 extern NSString *const ARAuthHeader;
 extern NSString *const ARXappHeader;
+extern NSString *const AREigenLocalTemporaryUserIDHeader;
+
 extern NSString *const ARTotalHeader;
 
 extern NSString *const AROAuthURL;
@@ -33,8 +34,11 @@ extern NSString *const ARAddArtworkToFavoritesURLFormat;
 extern NSString *const ARFavoritesURL;
 extern NSString *const ARSalesForArtworkURL;
 extern NSString *const ARMyBiddersURL;
+extern NSString *const ARMyLotStandingsURL;
 extern NSString *const ARBidderPositionsForSaleAndArtworkURL;
 extern NSString *const ARSaleArtworkForSaleAndArtworkURLFormat;
+extern NSString *const ARSaleURLFormat;
+extern NSString *const ARLiveSaleStateFormat;
 extern NSString *const ARSaleArtworksURLFormat;
 extern NSString *const ARArtworkFairsURLFormat;
 
@@ -55,9 +59,11 @@ extern NSString *const ARFollowProfilesURL;
 extern NSString *const ARFollowingProfileURLFormat;
 
 extern NSString *const ARRelatedArtistsURL;
+extern NSString *const ARRelatedGeneURLFormat;
+extern NSString *const ARPopularArtistsURL;
 extern NSString *const ARNotificationsURL;
 
-extern NSString *const ARGeneArtworksURLFormat;
+extern NSString *const ARGeneArtworksURL;
 extern NSString *const ARGeneInformationURLFormat;
 extern NSString *const ARFollowGeneURL;
 extern NSString *const ARFollowGenesURL;
@@ -69,6 +75,7 @@ extern NSString *const ARProfileInformationURLFormat;
 
 extern NSString *const ARNewSearchURL;
 extern NSString *const ARNewArtistSearchURL;
+extern NSString *const ARNewGeneSearchURL;
 
 extern NSString *const ARShowFeedURL;
 extern NSString *const ARShowArtworksURLFormat;
@@ -86,6 +93,7 @@ extern NSString *const AROrderedSetItemsURLFormat;
 extern NSString *const ARSiteFeaturesURL;
 
 extern NSString *const ARNewDeviceURL;
+extern NSString *const ARDeleteDeviceURL;
 extern NSString *const ARSiteUpURL;
 
 extern NSString *const ARProfilePostsURLFormat;
@@ -101,3 +109,4 @@ extern NSString *const ARSystemTimeURL;
 extern NSString *const ARSuggestedHomepageArtworks;
 
 extern NSString *const ARCreatePendingOrderURL;
+extern NSString *const ARPageURLFormat;

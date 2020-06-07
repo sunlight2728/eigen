@@ -1,6 +1,7 @@
-## Installation
+## Betas
 
-Install [HockeyApp for Mac](http://hockeyapp.net/apps) on the build machine. You will be asked to login to the HockeyApp with *it@artsymail.com* and to install the helper extension.
+Deployment to TestFlight is handled by Circle CI. Nightly betas are release automatically, but if you need to deploy something right away, run `make deploy` locally to trigger a beta build on CI. It takes about 45 minutes. There is a blog post on the process [here](http://artsy.github.io/blog/2015/12/15/Automating-Testflight-Deploys/).
 
-You can make beta builds with `make beta`. Make sure you have HOCKEYAPP_TOKEN set in your environment variables.
+Note that only one beta can be deployed at a time; teams should use [feature flags](./developing_a_feature.md) to avoid the need for having two parallel beta versions.
 
+There are two types of betas on TestFlight: Internal and External. Our deploy script sends the beta to both groups. However, Internal testers get access to the beta immediately, while external testers may have a delay of several hours/days while Apple does beta review. This additional review typically only happens when we change the version number.

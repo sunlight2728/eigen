@@ -7,6 +7,24 @@
 
 @implementation OHHTTPStubs (Artsy)
 
++ (void)stubJSONResponseForHost:(NSString *)host withResponse:(id)response
+{
+    NSObject <OHHTTPStubsDescriptor> *stub = [OHHTTPStubs stubRequestsPassingTest:^BOOL(NSURLRequest *request) {
+        if ([host containsString:@"*"]) {
+            NSString *theirHost = request.URL.host;
+            NSArray *components = [theirHost componentsSeparatedByString:@"*"];
+            return [theirHost hasPrefix:components.firstObject] && [theirHost hasSuffix:components.lastObject];
+        } else {
+            return [request.URL.host isEqualToString: host];
+        }
+    } withStubResponse:^OHHTTPStubsResponse *(NSURLRequest *request) {
+        NSData *data = [NSJSONSerialization dataWithJSONObject:response options:0 error:nil];
+        return [OHHTTPStubsResponse responseWithData:data statusCode:200 headers:@{ @"Content-Type": @"application/json" }];
+    }];
+
+    stub.name = host;
+}
+
 + (void)stubJSONResponseAtPath:(NSString *)path withResponse:(id)response
 {
     [OHHTTPStubs stubJSONResponseAtPath:path withResponse:response andStatusCode:200];
@@ -24,7 +42,12 @@
 
 + (void)stubJSONResponseAtPath:(NSString *)path withParams:(NSDictionary *)params withResponse:(id)response andStatusCode:(NSInteger)code
 {
-    [OHHTTPStubs stubRequestsPassingTest:^BOOL(NSURLRequest *request) {
+   NSObject <OHHTTPStubsDescriptor> *stub = [OHHTTPStubs stubRequestsPassingTest:^BOOL(NSURLRequest *request) {
+        if (request.URL == nil) {
+            return nil;
+//            [NSException raise:NSInvalidArgumentException format:@"Recieved a nil URL to stub: %@ - %@", NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+        }
+
         NSURLComponents *requestComponents = [NSURLComponents componentsWithURL:request.URL resolvingAgainstBaseURL:NO];
         NSString *urlString = path;
 
@@ -46,6 +69,8 @@
         NSData *data = [NSJSONSerialization dataWithJSONObject:response options:0 error:nil];
         return [OHHTTPStubsResponse responseWithData:data statusCode:(int)code headers:@{ @"Content-Type": @"application/json" }];
     }];
+
+    stub.name = path;
 }
 
 + (void)stubImageResponseAtPathWithDefault:(NSString *)path

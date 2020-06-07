@@ -1,5 +1,10 @@
 #import "ARNavigationButton.h"
 
+#import "ARFonts.h"
+
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+#import <ObjectiveSugar/ObjectiveSugar.h>
+
 
 @interface ARNavigationButton ()
 
@@ -29,13 +34,13 @@
 
     _borderWidth = borderWidth;
     _topBorder = [[UIView alloc] init];
-    self.topBorder.backgroundColor = [UIColor artsyLightGrey];
+    self.topBorder.backgroundColor = [UIColor artsyGrayRegular];
     [self addSubview:self.topBorder];
 
     _primaryTitleLabel = [[UILabel alloc] init];
     self.primaryTitleLabel.numberOfLines = 1;
     self.primaryTitleLabel.backgroundColor = [UIColor clearColor];
-    self.primaryTitleLabel.font = [UIFont sansSerifFontWithSize:14];
+    self.primaryTitleLabel.font = [UIFont sansSerifFontWithSize:12];
     [self addSubview:self.primaryTitleLabel];
 
     _subtitleLabel = [[UILabel alloc] init];
@@ -45,14 +50,14 @@
     self.subtitleLabel.textColor = [UIColor blackColor];
     [self addSubview:self.subtitleLabel];
 
-    _arrowView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"MoreArrow"]];
+    _arrowView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"navigation_more_arrow_horizontal@2x"]];
     self.arrowView.backgroundColor = [UIColor clearColor];
     self.arrowView.contentMode = UIViewContentModeCenter;
     [self addSubview:self.arrowView];
 
     _bottomBorder = [[UIView alloc] init];
     [self.bottomBorder constrainHeight:NSStringWithFormat(@"%f", borderWidth)];
-    self.bottomBorder.backgroundColor = [UIColor artsyLightGrey];
+    self.bottomBorder.backgroundColor = [UIColor artsyGrayRegular];
     [self addSubview:self.bottomBorder];
 
     [self setNeedsUpdateConstraints];
@@ -85,15 +90,19 @@
     self.title = title;
     self.subtitle = subtitle;
 
+    [self updateConstraintsIfNeeded];
+
     return self;
+}
+
+- (CGFloat)verticalPadding
+{
+    return self.subtitle.length == 0 ? 15 : 12;
 }
 
 - (void)updateConstraints
 {
-    NSString *paddingHeight = @"12";
-    if (self.subtitle.length == 0) {
-        paddingHeight = @"20";
-    }
+    NSString *paddingHeight = NSStringWithFormat(@"%f", self.verticalPadding);
 
     [self.topBorder removeConstraints:self.topBorder.constraints];
     [self.topBorder constrainHeight:NSStringWithFormat(@"%f", self.borderWidth)];
@@ -171,14 +180,6 @@
     self.onTap(self);
 }
 
-- (CGSize)intrinsicContentSize
-{
-    CGFloat labelMarginsHeight = self.subtitle.length == 0 ? 40 : 24;
-    CGFloat subtitleHeight = self.subtitle.length == 0 ? 0 : self.subtitleLabel.intrinsicContentSize.height;
-    CGFloat height = labelMarginsHeight + self.borderWidth + self.primaryTitleLabel.intrinsicContentSize.height + subtitleHeight;
-    height = MAX(height, self.arrowView.intrinsicContentSize.height);
-    return CGSizeMake(280, height);
-}
 @end
 
 

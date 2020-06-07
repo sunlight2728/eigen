@@ -1,6 +1,10 @@
 #import "ARBrowseFeaturedLinksCollectionViewController.h"
 #import "ARBrowseFeaturedLinksCollectionViewCell.h"
 
+#import "UIDevice-Hardware.h"
+
+#import <FLKAutoLayout/UIView+FLKAutoLayout.h>
+
 static CGFloat const ARDoubleRowStyleSpacing = 11;
 
 
@@ -35,7 +39,7 @@ static CGFloat const ARDoubleRowStyleSpacing = 11;
 {
     CGFloat height = [self heightForStyle:self.style size:size];
     if (!self.heightConstraint) {
-        self.heightConstraint = [[self.view constrainHeight:@(height).stringValue] lastObject];
+        self.heightConstraint = [self.view constrainHeight:@(height).stringValue];
     } else if (height != self.heightConstraint.constant) {
         self.heightConstraint.constant = height;
     }
